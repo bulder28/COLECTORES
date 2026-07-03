@@ -1,0 +1,22 @@
+/* Base heredada del look de los prototipos (tema oscuro de taller).
+   TODO: sistema de diseño propio en una iteración posterior. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Inter, Arial, sans-serif; background: #0b1120; color: #e2e8f0; }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; padding: 24px 16px; background: #0f172a; display: flex; flex-direction: column; gap: 12px; }
+.sidebar .logo { font-size: 1.1rem; letter-spacing: .08em; margin-bottom: 16px; }
+.sidebar a { color: #94a3b8; text-decoration: none; padding: 8px 12px; border-radius: 10px; }
+.sidebar a.active { background: #1e293b; color: #f8fafc; }
+.content { flex: 1; padding: 32px; }
+h2 { margin: 24px 0 12px; }
+.stat-grid, .celda-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.stat-card, .celda-card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 18px; color: inherit; text-align: center; cursor: pointer; }
+.stat-card h3 { font-size: 2rem; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid #1e293b; text-align: left; }
+.barra { margin: 10px 0; }
+.barra-track { display: flex; height: 34px; background: #1e293b; border-radius: 8px; overflow: hidden; }
+.barra-corte { background: #0ea5e9; border-right: 2px solid #0b1120; font-size: .7rem; display: flex; align-items: center; justify-content: center; }
+.barra-retal { background: repeating-linear-gradient(45deg, #334155, #334155 6px, #1e293b 6px, #1e293b 12px); }
+.error { color: #fb7185; } .ok { color: #34d399; }
+.config-row { display: flex; gap: 16px; } .config-row input { width: 100px; }

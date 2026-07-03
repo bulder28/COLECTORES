@@ -1,0 +1,1317 @@
+ <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion de corte colectores</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        // --- Column mapper utilities ---
+        function showColumnMapper(headers, rows, hasHeader) {
+            // Guardar contexto para usar al aplicar el mapeo
+            window._lastImportRows = rows;
+            window._lastImportHasHeader = hasHeader;
+            window._lastImportHeaders = headers;
+
+            const selects = ['map_numero','map_tipo','map_medida','map_material','map_longitud','map_cantidad','map_prioridad'];
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '';
+                const noneOpt = document.createElement('option');
+                noneOpt.value = -1;
+                noneOpt.textContent = '-- Ninguno --';
+                sel.appendChild(noneOpt);
+                headers.forEach((h, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = h || ('Col ' + i);
+                    sel.appendChild(opt);
+                });
+            });
+
+            // Colocar valores por defecto si existen coincidencias simples
+            const headerText = headers.join(' ');
+            try { if (headerText.match(/of|numero|id/i)) document.getElementById('map_numero').value = headers.findIndex(h => /of|numero|id/i.test(h)); } catch(e){}
+            try { if (headerText.match(/tipo|type/i)) document.getElementById('map_tipo').value = headers.findIndex(h => /tipo|type/i.test(h)); } catch(e){}
+            try { if (headerText.match(/medida|size|tama/i)) document.getElementById('map_medida').value = headers.findIndex(h => /medida|size|tama/i.test(h)); } catch(e){}
+            try { if (headerText.match(/material|mat/i)) document.getElementById('map_material').value = headers.findIndex(h => /material|mat/i.test(h)); } catch(e){}
+            try { if (headerText.match(/longitud|length|largo|mm/i)) document.getElementById('map_longitud').value = headers.findIndex(h => /longitud|length|largo|mm/i.test(h)); } catch(e){}
+            try { if (headerText.match(/cantidad|qty|quantity|cant/i)) document.getElementById('map_cantidad').value = headers.findIndex(h => /cantidad|qty|quantity|cant/i.test(h)); } catch(e){}
+            try { if (headerText.match(/prioridad|priority|prio/i)) document.getElementById('map_prioridad').value = headers.findIndex(h => /prioridad|priority|prio/i.test(h)); } catch(e){}
+
+            // Mostrar preview
+            const dataRows = hasHeader ? rows.slice(1) : rows;
+            const preview = document.getElementById('mapperPreview');
+            preview.innerHTML = '';
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            const thead = document.createElement('thead');
+            const htr = document.createElement('tr');
+            headers.forEach(h => { const th = document.createElement('th'); th.textContent = h || ''; htr.appendChild(th); });
+            thead.appendChild(htr);
+            table.appendChild(thead);
+            const tbody = document.createElement('tbody');
+            (dataRows.slice(0,5)).forEach(r => {
+                const tr = document.createElement('tr');
+                for (let i=0;i<headers.length;i++) {
+                    const td = document.createElement('td'); td.textContent = String(r[i]===undefined?'':r[i]); tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            preview.appendChild(table);
+
+            document.getElementById('columnMapper').style.display = 'block';
+        }
+
+        function applyColumnMapping() {
+            const rows = window._lastImportRows || [];
+            const hasHeader = !!window._lastImportHasHeader;
+            const headers = window._lastImportHeaders || (rows[0]||[]).map((_,i) => 'Col '+i);
+            const dataRows = hasHeader ? rows.slice(1) : rows;
+
+            const mapping = {
+                numero: parseInt(document.getElementById('map_numero').value,10),
+                tipo: parseInt(document.getElementById('map_tipo').value,10),
+                medida: parseInt(document.getElementById('map_medida').value,10),
+                material: parseInt(document.getElementById('map_material').value,10),
+                longitud: parseInt(document.getElementById('map_longitud').value,10),
+                cantidad: parseInt(document.getElementById('map_cantidad').value,10),
+                prioridad: parseInt(document.getElementById('map_prioridad').value,10)
+            };
+
+            const nuevos = [];
+            const errores = [];
+
+            dataRows.forEach((row, idx) => {
+                const safe = (i) => String(row[i] === undefined ? '' : row[i]).trim();
+                const numero = mapping.numero >= 0 ? safe(mapping.numero) : '';
+                const tipo = mapping.tipo >= 0 ? safe(mapping.tipo) : 'colector';
+                const medida = mapping.medida >= 0 ? safe(mapping.medida) : '';
+                const materialRaw = mapping.material >= 0 ? safe(mapping.material) : '';
+                const longitudStr = mapping.longitud >= 0 ? safe(mapping.longitud) : '';
+                const cantidadStr = mapping.cantidad >= 0 ? safe(mapping.cantidad) : '';
+                const prioridadRaw = mapping.prioridad >= 0 ? safe(mapping.prioridad) : '';
+
+                const material = normalizarMaterial(materialRaw);
+                const prioridad = normalizarPrioridad(prioridadRaw);
+                const longitud = parseInt(longitudStr, 10);
+                const cantidad = parseInt(cantidadStr, 10);
+
+                if (!numero || !medida || !material || isNaN(longitud) || isNaN(cantidad)) {
+                    errores.push(idx+1);
+                    return;
+                }
+
+                nuevos.push({
+                    id: idCounter++,
+                    numero,
+                    tipo: tipo || 'colector',
+                    medida,
+                    material,
+                    prioridad: prioridad || 'Normal',
+                    longitud,
+                    cantidad,
+                    completedCount: 0
+                });
+            });
+
+            if (errores.length > 0) {
+                alert('Error en las filas (según el mapeo): ' + errores.join(', ') + '. Revisa la vista previa y el mapeo.');
+                document.getElementById('mapperMessage').textContent = 'Errores en filas: ' + errores.join(', ');
+                return;
+            }
+
+            if (nuevos.length === 0) {
+                alert('No se importaron registros con el mapeo proporcionado.');
+                return;
+            }
+
+            ordenesTrabajo = ordenesTrabajo.concat(nuevos);
+            actualizarTabla();
+            actualizarStats();
+            document.getElementById('columnMapper').style.display = 'none';
+            document.getElementById('importFile').value = '';
+            alert('Se importaron ' + nuevos.length + ' órdenes de trabajo (mapeo manual).');
+        }
+
+        body {
+            font-family: 'Inter', 'Arial', sans-serif;
+            background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.2), transparent 30%),
+                        radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.18), transparent 25%),
+                        #0b1120;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 16px 16px 24px 20px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: calc(100% - 40px);
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 24px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+            color: #f8fafc;
+            padding: 32px 36px;
+            text-align: center;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        header h1 {
+            font-size: clamp(2rem, 2.5vw, 3rem);
+            letter-spacing: 0.02em;
+            margin-bottom: 12px;
+        }
+
+        header p {
+            color: #cbd5e1;
+            font-size: 1rem;
+        }
+
+        .content {
+            padding: 30px 28px 34px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 30px;
+            margin-bottom: 32px;
+        }
+
+        .full-width-card {
+            grid-column: 1 / -1;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(15, 23, 42, 0.72);
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            resize: vertical;
+        }
+
+        .hint {
+            color: #94a3b8;
+            font-size: 0.92rem;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 18px;
+        }
+
+        .action-row select {
+            max-width: 260px;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.88);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+        }
+
+        .card h2,
+        .card h3,
+        .card h4 {
+            color: #e2e8f0;
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            font-size: 1.35rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #94a3b8;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.7);
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+        }
+
+        input::placeholder,
+        select::placeholder {
+            color: #64748b;
+        }
+
+        .action-row input[type="file"] {
+            width: auto;
+            max-width: 260px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.76);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: rgba(16, 185, 129, 0.7);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+        }
+
+        .btn {
+            padding: 14px 26px;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+            margin: 5px 6px 5px 0;
+            letter-spacing: 0.01em;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: #14b8a6;
+            color: #0f172a;
+            box-shadow: 0 14px 30px rgba(20, 184, 166, 0.18);
+        }
+
+        .btn-primary:hover {
+            background: #0f766e;
+        }
+
+        .btn-success {
+            background: #22c55e;
+            color: #071b10;
+            box-shadow: 0 14px 30px rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 14px 30px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 18px;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.94);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+        }
+
+        th,
+        td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        th {
+            background: linear-gradient(90deg, #0f172a 0%, #111827 100%);
+            color: #f8fafc;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(148, 163, 184, 0.04);
+        }
+
+        tr:hover {
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 22px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.95), rgba(14, 165, 233, 0.85));
+            color: #f8fafc;
+            padding: 24px 22px;
+            border-radius: 22px;
+            box-shadow: 0 20px 40px rgba(14, 165, 233, 0.18);
+            text-align: center;
+            min-height: 150px;
+        }
+
+        .stat-card h3 {
+            font-size: 2.3rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-card p {
+            opacity: 0.95;
+            margin: 0;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .badge-cu {
+            background: #fb7185;
+            color: #111827;
+        }
+
+        .badge-fe {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        .badge-complete {
+            background: #22c55e;
+            color: #071b10;
+        }
+
+        .badge-high {
+            background: #f59e0b;
+            color: #111827;
+        }
+
+        .badge-low {
+            background: #a855f7;
+            color: #f8fafc;
+        }
+
+        .badge-pending {
+            background: #64748b;
+            color: #f8fafc;
+        }
+
+        .optimization-result {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 24px;
+            border-radius: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+        }
+
+        .cut-visual {
+            margin: 18px 0;
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            overflow-x: auto;
+        }
+
+        .cut-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .cut-bar {
+            height: auto;
+            min-height: 32px;
+            background: linear-gradient(90deg, #14b8a6 0%, #0ea5e9 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 10px;
+            color: #eff6ff;
+            font-size: 0.78rem;
+            line-height: 1.1;
+            margin: 8px 0;
+            min-width: 60px;
+            max-width: 100%;
+            box-sizing: border-box;
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            flex: 0 0 auto;
+        }
+
+        .cut-bar.waste {
+            background: linear-gradient(90deg, rgba(248, 113, 113, 0.95), rgba(248, 113, 113, 0.75));
+            color: #fff;
+        }
+
+        .cut-bar.waste::after {
+            content: '';
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.14);
+            color: #e2e8f0;
+            box-shadow: none;
+        }
+
+
+    </style>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GESTIÓN DE CORTE DE TUBO</h1>
+            <p>Optimiza órdenes de trabajo y cortes de tubos con diferentes vistas de interfaz.</p>
+        </header>
+
+        <div class="content" id="appContent">
+            <!-- Estadísticas -->
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="totalOF">0</h3>
+                    <p>Órdenes de Trabajo</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalEquipos">0</h3>
+                    <p>Equipos</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="equiposCompletos">0</h3>
+                    <p>Equipos Completados</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalCortes">0</h3>
+                    <p>Total de Cortes</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="avgTime">0s</h3>
+                    <p>Tiempo medio / corte</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="materialCu">0 m</h3>
+                    <p>Hierro</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="materialFe">0 m</h3>
+                    <p>Cobre</p>
+                </div>
+            </div>
+
+            <div class="ui-section" id="section-import" data-title="Importar listado de OF">
+                <div class="card full-width-card">
+                    <h2>Importar listado de OF</h2>
+                    <!-- Área de importación simplificada: el usuario puede pegar listado cuando se solicite -->
+                    <div class="action-row">
+                        <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
+                        <button class="btn btn-primary" onclick="importarDesdeArchivo()">Importar desde archivo</button>
+                        <button class="btn btn-primary" onclick="importarListadoOF()">Cargar listado OF (pegar)</button>
+                        <select id="sampleListSelect">
+                            <option value="">Seleccionar lista predefinida</option>
+                            <option value="OF-101;colector;1/2;Cobre;1460;2|OF-102;manguito;3/8;Hierro;1200;4|OF-103;colector;5/8;Cobre;800;3">Lista corta estándar</option>
+                            <option value="OF-201;colector;1/2;Hierro;1600;1|OF-202;manguito;3/8;Cobre;900;2|OF-203;colector;5/8;Hierro;1300;2">Lista optimizada</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="cargarListaSeleccionada()">Cargar desde selección</button>
+                    </div>
+
+                    <!-- Mapper UI: se muestra cuando la detección automática falla -->
+                    <div id="columnMapper" style="display:none; margin-top:16px;" class="card">
+                        <h3>Mapear columnas del archivo</h3>
+                        <p class="hint">Selecciona qué columna corresponde a cada campo. Si hay encabezado, las opciones muestran los nombres detectados.</p>
+                        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+                            <label>OF / Número:
+                                <select id="map_numero"></select>
+                            </label>
+                            <label>Tipo:
+                                <select id="map_tipo"></select>
+                            </label>
+                            <label>Medida:
+                                <select id="map_medida"></select>
+                            </label>
+                            <label>Material:
+                                <select id="map_material"></select>
+                            </label>
+                            <label>Longitud (mm):
+                                <select id="map_longitud"></select>
+                            </label>
+                            <label>Cantidad:
+                                <select id="map_cantidad"></select>
+                            </label>
+                            <label>Prioridad (opcional):
+                                <select id="map_prioridad"></select>
+                            </label>
+                        </div>
+                        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+                            <button class="btn btn-success" onclick="applyColumnMapping()">Importar con este mapeo</button>
+                            <button class="btn btn-secondary" onclick="document.getElementById('columnMapper').style.display='none'">Cancelar</button>
+                            <div id="mapperMessage" style="margin-left:12px; color:#94a3b8;"></div>
+                        </div>
+                        <div id="mapperPreview" style="margin-top:12px; max-height:220px; overflow:auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <!-- Formulario Rápido de Nueva OF (minimalista) -->
+                <div class="ui-section" id="section-new-of" data-title="Nueva OF (Manual - Rara)">
+                    <div class="card" style="padding: 10px;">
+                        <form id="ofForm" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: end;">
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 12px;">OF:</label>
+                                <input type="text" id="ofNumero" required placeholder="Ej: OF-001" style="padding: 5px; font-size: 12px;">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 12px;">Medida:</label>
+                                <select id="medida" required style="padding: 5px; font-size: 12px;">
+                                    <option value="1/2">1/2"</option>
+                                    <option value="3/8">3/8"</option>
+                                    <option value="2">2"</option>
+                                    <option value="1 5/8">1"</option>
+                                    <option value="3/8">3/8"</option>
+                                    <option value="5/8">5/8"</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 12px;">Cantidad:</label>
+                                <input type="number" id="cantidad" required placeholder="Qty" min="1" value="1" style="padding: 5px; font-size: 12px; width: 60px;">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">➕</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Configuración de stock -->
+                <div class="ui-section" id="section-stock" data-title="Configuración de Stock">
+                    <div class="card">
+                    <h2>Configuración de Stock</h2>
+                    <div class="form-group">
+                        <label>Longitud estándar de tubos (mm):</label>
+                        <input type="number" id="stockLength" value="6000" placeholder="Longitud del tubo completo">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Merma tubo (mm):</label>
+                        <input type="number" id="mermaTubo" value="3" placeholder="Merma por corte/tubo">
+                    </div>
+
+                    <h3 style="margin-top: 20px; color: #667eea;">Stock Disponible:</h3>
+                    <table id="stockTable">
+                        <thead>
+                            <tr>
+                                <th>Medida</th>
+                                <th>Material</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1/2"</td>
+                                <td><span class="badge badge-cu">Cobre</span></td>
+                                <td><input type="number" value="10" style="width: 60px;" id="stock-1/2-Cobre"></td>
+                            </tr>
+                            <tr>
+                                <td>1/2"</td>
+                                <td><span class="badge badge-fe">Hierro</span></td>
+                                <td><input type="number" value="10" style="width: 60px;" id="stock-1/2-Hierro"></td>
+                            </tr>
+                            <tr>
+                                <td>3/8"</td>
+                                <td><span class="badge badge-cu">Cobre</span></td>
+                                <td><input type="number" value="10" style="width: 60px;" id="stock-3/8-Cobre"></td>
+                            </tr>
+                            <tr>
+                                <td>3/8"</td>
+                                <td><span class="badge badge-fe">Hierro</span></td>
+                                <td><input type="number" value="10" style="width: 60px;" id="stock-3/8-Hierro"></td>
+                            </tr>
+                            <tr>
+                                <td>5/8"</td>
+                                <td><span class="badge badge-cu">Cobre</span></td>
+                                <td><input type="number" value="10" style="width: 60px;" id="stock-5/8-Cobre"></td>
+                            </tr>
+                            <tr>
+                                <td>5/8"</td>
+                                <td><span class="badge badge-fe">Hierro</span></td>
+                                <td><input type="number" value="10" style="width: 60px;" id="stock-5/8-Hierro"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Lista de OFs -->
+            <div class="ui-section" id="section-table" data-title="Órdenes de Trabajo Registradas">
+                <div class="card" style="max-width: 900px; margin-right: auto;">
+                    <h2>📋 Órdenes de Trabajo Registradas</h2>
+                    <table id="ofTable">
+                    <thead>
+                        <tr>
+                            <th>OF</th>
+                            <th>Tipo</th>
+                            <th>Medida</th>
+                            <th>Material</th>
+                            <th>Longitud (mm)</th>
+                            <th>Cantidad</th>
+                            <th>Completados</th>
+                            <th>Prioridad</th>
+                            <th>Equipo</th>
+                            <th>Tiempo</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ofTableBody">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+            <!-- Resultados de optimización -->
+            <div class="ui-section" id="section-results" data-title="Resultados de Optimización">
+                <div id="optimizacionResults" style="display: none;">
+                <div class="card">
+                    <h2>Resultados de Optimización</h2>
+                    <div id="optimizationContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Almacenamiento de OFs
+        let ordenesTrabajo = [];
+        let idCounter = 1;
+
+        // Configuración
+        const MEDIDAS = ['1/2', '3/8', '5/8'];
+        const MATERIALES = ['Cobre', 'Hierro'];
+        const TIPOS = ['colector', 'manguito'];
+
+        function materialBadgeClass(material) {
+            const key = material.toLowerCase();
+            if (key.includes('cobre') || key === 'cu') return 'badge-cu';
+            if (key.includes('hierro') || key === 'fe') return 'badge-fe';
+            return 'badge-cu';
+        }
+
+        function priorityBadgeClass(priority) {
+            const key = String(priority || 'Normal').toLowerCase();
+            if (key === 'alta' || key === 'high') return 'badge-high';
+            if (key === 'baja' || key === 'low') return 'badge-low';
+            return 'badge-pending';
+        }
+
+        function normalizarPrioridad(priority) {
+            const value = String(priority || 'Normal').trim();
+            if (/^\s*(alta|high)\s*$/i.test(value)) return 'Alta';
+            if (/^\s*(baja|low)\s*$/i.test(value)) return 'Baja';
+            return 'Normal';
+        }
+
+        function normalizarMaterial(material) {
+            const value = material.toString().trim();
+            if (/^\s*(cu|cobre)\s*$/i.test(value)) return 'Cobre';
+            if (/^\s*(fe|hierro)\s*$/i.test(value)) return 'Hierro';
+            return value;
+        }
+
+        // Event Listeners
+        document.getElementById('ofForm').addEventListener('submit', agregarOF);
+
+        // Función para agregar OF
+        function agregarOF(e) {
+            e.preventDefault();
+            
+            const of = {
+                    id: idCounter++,
+                    numero: document.getElementById('ofNumero').value,
+                    tipo: 'colector',  // Default: se carga desde BD/Excel
+                    medida: document.getElementById('medida').value,
+                    material: 'Cobre',  // Default: se carga desde BD/Excel
+                    prioridad: 'Normal',  // Default: se carga desde BD/Excel
+                    longitud: 1000,  // Default: se carga desde BD/Excel
+                    cantidad: parseInt(document.getElementById('cantidad').value),
+                    completedCount: 0,
+                    currentCutStart: null,
+                    durations: []
+                };
+
+            ordenesTrabajo.push(of);
+            actualizarTabla();
+            actualizarStats();
+            
+            // Limpiar formulario
+            document.getElementById('ofForm').reset();
+            document.getElementById('ofNumero').focus();
+        }
+
+        // Función para actualizar tabla
+        function actualizarTabla() {
+            const tbody = document.getElementById('ofTableBody');
+            tbody.innerHTML = '';
+
+            ordenesTrabajo.forEach(of => {
+                const row = document.createElement('tr');
+                const pendientes = Math.max(0, of.cantidad - (of.completedCount || 0));
+                const totalMetros = ((of.longitud * pendientes) / 1000).toFixed(2);
+                const completados = of.completedCount || 0;
+                const completedClass = pendientes === 0 ? 'opacity:0.6; text-decoration: line-through;' : '';
+                
+                const equipoResumen = obtenerResumenEquipo(of.numero);
+                const equipoBadgeClass = equipoResumen.completo ? 'badge-complete' : 'badge-pending';
+                const equipoLabel = equipoResumen.completo ? 'COMPLETO' : `${equipoResumen.completadas}/${equipoResumen.totalPiezas}`;
+
+                const prioridadBadge = priorityBadgeClass(of.prioridad);
+                row.innerHTML = `
+                    <td style="${completedClass}"><strong>${of.numero}</strong></td>
+                    <td style="${completedClass}">${of.tipo}</td>
+                    <td style="${completedClass}">${of.medida}"</td>
+                    <td style="${completedClass}"><span class="badge ${materialBadgeClass(of.material)}">${of.material}</span></td>
+                    <td style="${completedClass}">${of.longitud}</td>
+                    <td style="${completedClass}">${of.cantidad}</td>
+                    <td style="${completedClass}">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <button class="btn" style="padding:6px 8px; font-size:12px;" onclick="decrementarCompletados(${of.id})">-</button>
+                            <div style="min-width:36px; text-align:center;">${completados}</div>
+                            <button class="btn btn-primary" style="padding:6px 8px; font-size:12px;" onclick="incrementarCompletados(${of.id})">+</button>
+                        </div>
+                    </td>
+                    <td style="${completedClass}"><span class="badge ${prioridadBadge}">${of.prioridad}</span></td>
+                    <td style="${completedClass}"><span class="badge ${equipoBadgeClass}">${equipoLabel}</span></td>
+                    <td style="${completedClass}">${formatDuration(getAverageDuration(of))}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px; margin-right: 6px;" onclick="toggleCorte(${of.id})">
+                            ${of.currentCutStart ? '⏸' : '▶'}
+                        </button>
+                        <button class="btn btn-danger" onclick="eliminarOF(${of.id})" style="padding: 5px 10px; font-size: 12px;">
+                            🗑️
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Función para eliminar OF
+        function eliminarOF(id) {
+            ordenesTrabajo = ordenesTrabajo.filter(of => of.id !== id);
+            actualizarTabla();
+            actualizarStats();
+        }
+
+        // Función para actualizar estadísticas
+        function obtenerResumenEquipo(numero) {
+            const items = ordenesTrabajo.filter(of => of.numero === numero);
+            const totalPiezas = items.reduce((sum, item) => sum + item.cantidad, 0);
+            const completadas = items.reduce((sum, item) => sum + (item.completedCount || 0), 0);
+            return {
+                totalPiezas,
+                completadas,
+                pendientes: Math.max(0, totalPiezas - completadas),
+                completo: completadas >= totalPiezas
+            };
+        }
+
+        function actualizarStats() {
+            const totalOF = ordenesTrabajo.length;
+            const uniqueEquipos = [...new Set(ordenesTrabajo.map(of => of.numero))];
+            const totalEquipos = uniqueEquipos.length;
+            const equiposCompletos = uniqueEquipos.filter(numero => obtenerResumenEquipo(numero).completo).length;
+            const totalCortes = ordenesTrabajo.reduce((sum, of) => sum + Math.max(0, of.cantidad - (of.completedCount || 0)), 0);
+            const allDurations = ordenesTrabajo.reduce((arr, of) => arr.concat(of.durations || []), []);
+            const avgDuration = allDurations.length > 0 ? Math.round(allDurations.reduce((sum, time) => sum + time, 0) / allDurations.length) : 0;
+            
+            let metrosCu = 0;
+            let metrosFe = 0;
+            
+            ordenesTrabajo.forEach(of => {
+                const pendientes = Math.max(0, of.cantidad - (of.completedCount || 0));
+                const metros = (of.longitud * pendientes) / 1000;
+                const material = normalizarMaterial(of.material);
+                if (material === 'Cobre') {
+                    metrosCu += metros;
+                } else {
+                    metrosFe += metros;
+                }
+            });
+
+            document.getElementById('totalOF').textContent = totalOF;
+            document.getElementById('totalEquipos').textContent = totalEquipos;
+            document.getElementById('equiposCompletos').textContent = equiposCompletos;
+            document.getElementById('totalCortes').textContent = totalCortes;
+            document.getElementById('avgTime').textContent = formatDuration(avgDuration);
+            document.getElementById('materialCu').textContent = metrosCu.toFixed(1) + ' m';
+            document.getElementById('materialFe').textContent = metrosFe.toFixed(1) + ' m';
+        }
+
+        // Algoritmo de optimización de corte (Cutting Stock Problem)
+        function optimizarCortes() {
+            if (ordenesTrabajo.length === 0) {
+                alert('No hay órdenes de trabajo registradas');
+                return;
+            }
+
+            const stockLength = parseInt(document.getElementById('stockLength').value);
+            const mermaTubo = parseInt(document.getElementById('mermaTubo').value);
+            
+            // Agrupar por medida y material
+            const grupos = {};
+            ordenesTrabajo.forEach(of => {
+                const key = `${of.medida}-${of.material}`;
+                if (!grupos[key]) {
+                    grupos[key] = [];
+                }
+                for (let i = 0; i < of.cantidad; i++) {
+                    grupos[key].push({
+                        of: of.numero,
+                        longitud: of.longitud,
+                        tipo: of.tipo,
+                        prioridad: normalizarPrioridad(of.prioridad)
+                    });
+                }
+            });
+
+            let resultadosHTML = '';
+            let totalTubosUsados = 0;
+            let totalDesperdicio = 0;
+
+            // Optimizar cada grupo
+            for (const [key, cortes] of Object.entries(grupos)) {
+                const [medida, material] = key.split('-');
+                
+                // Ordenar por prioridad y luego por longitud (prioriza urgentes)
+                const PRIORITY_ORDER = { 'Alta': 3, 'Normal': 2, 'Baja': 1 };
+                cortes.sort((a, b) => {
+                    const pa = PRIORITY_ORDER[a.prioridad] || 2;
+                    const pb = PRIORITY_ORDER[b.prioridad] || 2;
+                    if (pb !== pa) return pb - pa;
+                    return b.longitud - a.longitud;
+                });
+                
+                const tubos = [];
+                let tubosUsados = 0;
+                let desperdicioGrupo = 0;
+
+                cortes.forEach(corte => {
+                    let colocado = false;
+                    
+                    // Intentar colocar en un tubo existente
+                    for (let tubo of tubos) {
+                        const espacioDisponible = stockLength - tubo.usado - mermaTubo;
+                        if (espacioDisponible >= corte.longitud) {
+                            tubo.cortes.push(corte);
+                            tubo.usado += corte.longitud + mermaTubo;
+                            colocado = true;
+                            break;
+                        }
+                    }
+                    
+                    // Si no se pudo colocar, crear nuevo tubo
+                    if (!colocado) {
+                        tubos.push({
+                            cortes: [corte],
+                            usado: corte.longitud + mermaTubo
+                        });
+                        tubosUsados++;
+                    }
+                });
+
+                // Calcular desperdicio
+                tubos.forEach(tubo => {
+                    const desperdicio = stockLength - tubo.usado;
+                    desperdicioGrupo += desperdicio;
+                });
+
+                totalTubosUsados += tubosUsados;
+                totalDesperdicio += desperdicioGrupo;
+
+                // Generar HTML de resultados
+                resultadosHTML += `
+                    <div class="optimization-result">
+                        <h3>Medida: ${medida}" - Material: ${material}</h3>
+                        <p><strong>Tubos necesarios:</strong> ${tubosUsados}</p>
+                        <p><strong>Desperdicio total:</strong> ${(desperdicioGrupo/1000).toFixed(2)} m</p>
+                        
+                        <h4 style="margin-top: 15px;">Detalle de cortes por tubo:</h4>
+                `;
+
+                tubos.forEach((tubo, index) => {
+                    resultadosHTML += `
+                        <div class="cut-visual">
+                            <strong>Tubo ${index + 1}:</strong>
+                            <div class="cut-row">
+                                ${tubo.cortes.map((corte, i) => `
+                                    <div class="cut-bar" style="width: ${(corte.longitud/stockLength)*100}%">
+                                        ${corte.of} (${corte.prioridad}) - ${corte.longitud}mm (${corte.tipo})
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="cut-row">
+                                <div class="cut-bar waste" style="width: ${((stockLength - tubo.usado)/stockLength)*100}%">
+                                    Desperdicio: ${stockLength - tubo.usado}mm
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                resultadosHTML += `</div>`;
+            }
+
+            // Resumen general
+            resultadosHTML += `
+                <div class="stats" style="margin-top: 30px;">
+                    <div class="stat-card">
+                        <h3>${totalTubosUsados}</h3>
+                        <p>Total de Tubos a Usar</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${(totalDesperdicio/1000).toFixed(2)} m</h3>
+                        <p>Desperdicio Total</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${((totalDesperdicio/(totalTubosUsados*stockLength))*100).toFixed(1)}%</h3>
+                        <p>% de Desperdicio</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('optimizationContent').innerHTML = resultadosHTML;
+            document.getElementById('optimizacionResults').style.display = 'block';
+            
+            // Scroll a resultados
+            document.getElementById('optimizacionResults').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Datos de ejemplo
+        function cargarEjemplo() {
+            ordenesTrabajo = [
+                { id: 1, numero: 'OF-001', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 1460, cantidad: 2, completedCount: 0 },
+                { id: 2, numero: 'OF-001', tipo: 'manguito', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 546, cantidad: 2, completedCount: 0 },
+                { id: 3, numero: 'OF-002', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Normal', longitud: 1200, cantidad: 4, completedCount: 0 }
+            ];
+            idCounter = 4;
+            actualizarTabla();
+            actualizarStats();
+        }
+
+        // Función para importar listado de OF desde texto (opcional). Si no se pasa texto, pide al usuario que lo pegue.
+        function importarListadoOF(pastedText) {
+            let text = pastedText;
+            if (!text) {
+                text = prompt('Pega el listado de OF (formato: OF;tipo;medida;material;longitud;cantidad;prioridad). Prioridad opcional: Alta/Normal/Baja');
+                if (text === null) return; // cancelado
+                text = text.trim();
+            }
+            if (!text) {
+                alert('No se proporcionó texto de importación.');
+                return;
+            }
+
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            const nuevos = [];
+            const errores = [];
+
+            lines.forEach((line, index) => {
+                const partes = line.split(';').map(part => part.trim());
+                if (partes.length < 6 || partes.length > 7) {
+                    errores.push(index + 1);
+                    return;
+                }
+
+                const [numero, tipo, medida, materialRaw, longitudStr, cantidadStr, prioridadRaw] = partes;
+                const material = normalizarMaterial(materialRaw);
+                const prioridad = normalizarPrioridad(prioridadRaw);
+                const longitud = parseInt(longitudStr, 10);
+                const cantidad = parseInt(cantidadStr, 10);
+
+                if (!numero || !tipo || !medida || !material || isNaN(longitud) || isNaN(cantidad)) {
+                    errores.push(index + 1);
+                    return;
+                }
+
+                nuevos.push({
+                    id: idCounter++,
+                    numero,
+                    tipo,
+                    medida,
+                    material,
+                    prioridad,
+                    longitud,
+                    cantidad,
+                    completedCount: 0
+                });
+            });
+
+                if (errores.length > 0) {
+                    alert('Hay errores en las líneas: ' + errores.join(', ') + '. Revisa el formato del listado.');
+                    return;
+                }
+
+            ordenesTrabajo = ordenesTrabajo.concat(nuevos);
+            actualizarTabla();
+            actualizarStats();
+            document.getElementById('sampleListSelect').value = '';
+        }
+
+        function importarDesdeArchivo() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Selecciona un archivo Excel (.xlsx, .xls) o CSV.');
+                return;
+            }
+
+            const isCsv = /\.csv$/i.test(file.name);
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+                let workbook;
+                try {
+                    const data = event.target.result;
+                    workbook = isCsv
+                        ? XLSX.read(data, { type: 'string' })
+                        : XLSX.read(data, { type: 'binary' });
+                } catch (error) {
+                    alert('No se pudo leer el archivo. Asegúrate de que sea un Excel válido o CSV.');
+                    return;
+                }
+
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+                if (rows.length === 0) {
+                    alert('El archivo está vacío.');
+                    return;
+                }
+
+                const firstRow = rows[0].map(cell => String(cell || '').toLowerCase().trim());
+                const headerEvidence = firstRow.join(' ');
+                const hasHeader = /of\b|numero|número|id\b|tipo\b|medida|material|longitud|cantidad|qty|length|size|prioridad/i.test(headerEvidence);
+                const dataRows = hasHeader ? rows.slice(1) : rows;
+                const nuevos = [];
+                const errores = [];
+
+                // Si hay encabezado, crear un mapeo flexible columna->campo
+                const headerMap = {};
+                if (hasHeader) {
+                    firstRow.forEach((h, i) => {
+                        if (!h) return;
+                        if (/^(of|numero|número|id)$/i.test(h)) headerMap.numero = i;
+                        else if (/^(tipo|type)$/i.test(h)) headerMap.tipo = i;
+                        else if (/^(medida|size|tamaño)$/i.test(h)) headerMap.medida = i;
+                        else if (/^(material|mat)/i.test(h)) headerMap.material = i;
+                        else if (/^(longitud|length|largo|mm|len)$/i.test(h)) headerMap.longitud = i;
+                        else if (/^(cantidad|qty|quantity|cant)$/i.test(h)) headerMap.cantidad = i;
+                        else if (/^(prioridad|priority|prio)$/i.test(h)) headerMap.prioridad = i;
+                    });
+                }
+
+                dataRows.forEach((row, index) => {
+                    if (!row || row.length < 1) {
+                        errores.push(index + 1);
+                        return;
+                    }
+
+                    const safe = (i) => String(row[i] === undefined ? '' : row[i]).trim();
+
+                    const getField = (field, fallbackIndex) => {
+                        if (headerMap[field] !== undefined) return safe(headerMap[field]);
+                        return safe(fallbackIndex);
+                    };
+
+                    const numero = getField('numero', 0);
+                    const tipo = getField('tipo', 1);
+                    const medida = getField('medida', 2);
+                    const materialRaw = getField('material', 3);
+                    const longitudStr = getField('longitud', 4);
+                    const cantidadStr = getField('cantidad', 5);
+                    const prioridadRaw = getField('prioridad', 6);
+
+                    const material = normalizarMaterial(materialRaw);
+                    const prioridad = normalizarPrioridad(prioridadRaw);
+                    const longitud = parseInt(longitudStr, 10);
+                    const cantidad = parseInt(cantidadStr, 10);
+
+                    // Validaciones: intentar detectar campos mínimos
+                    if (!numero || !medida || !material || isNaN(longitud) || isNaN(cantidad)) {
+                        errores.push(index + 1);
+                        return;
+                    }
+
+                    nuevos.push({
+                        id: idCounter++,
+                        numero,
+                        tipo: tipo || 'colector',
+                        medida,
+                        material,
+                        prioridad: prioridad || 'Normal',
+                        longitud,
+                        cantidad,
+                        completedCount: 0
+                    });
+                });
+
+                if (errores.length > 0) {
+                    // Si la importación automática encuentra errores, ofrecer mapeo manual
+                    const headers = hasHeader ? firstRow : (rows[0] || []).map((_,i) => 'Col ' + i);
+                    showColumnMapper(headers, rows, hasHeader);
+                    document.getElementById('mapperMessage').textContent = 'Se detectaron errores en algunas filas. Ajusta el mapeo y vuelve a importar.';
+                    return;
+                }
+
+                if (nuevos.length === 0) {
+                    // Si no se generaron registros, mostrar el mapeador para revisión
+                    const headers = hasHeader ? firstRow : (rows[0] || []).map((_,i) => 'Col ' + i);
+                    showColumnMapper(headers, rows, hasHeader);
+                    document.getElementById('mapperMessage').textContent = 'No se encontraron filas válidas. Revisa el mapeo.';
+                    return;
+                }
+
+                ordenesTrabajo = ordenesTrabajo.concat(nuevos);
+                actualizarTabla();
+                actualizarStats();
+                fileInput.value = '';
+                alert('Se importaron ' + nuevos.length + ' órdenes de trabajo.');
+            };
+
+            if (isCsv) {
+                reader.readAsText(file, 'UTF-8');
+            } else {
+                reader.readAsBinaryString(file);
+            }
+        }
+
+        function cargarEjemploRapido() {
+            // Ya no usa textarea; si es necesario se puede invocar importarListadoOF con texto.
+            importarListadoOF('OF-101;colector;1/2;Cobre;1460;2\nOF-102;manguito;3/8;Hierro;1200;3\nOF-103;colector;5/8;Cobre;800;1');
+        }
+
+        function cargarListaSeleccionada() {
+            const select = document.getElementById('sampleListSelect');
+            const value = select.value;
+            if (!value) {
+                alert('Selecciona una lista predefinida para cargar.');
+                return;
+            }
+            const rows = value.split('|').join('\n');
+            importarListadoOF(rows);
+        }
+
+        // Funciones para marcar incrementos/decrementos de completados
+        function incrementarCompletados(id) {
+            const of = ordenesTrabajo.find(o => o.id === id);
+            if (!of) return;
+            if (!of.completedCount) of.completedCount = 0;
+            if (of.completedCount >= of.cantidad) return;
+            if (of.currentCutStart) {
+                const diff = Date.now() - of.currentCutStart;
+                of.durations.push(diff);
+                of.currentCutStart = null;
+            }
+            of.completedCount++;
+            actualizarTabla();
+            actualizarStats();
+        }
+
+        function decrementarCompletados(id) {
+            const of = ordenesTrabajo.find(o => o.id === id);
+            if (!of) return;
+            if (!of.completedCount) of.completedCount = 0;
+            if (of.completedCount > 0) {
+                of.completedCount--;
+                if (of.durations && of.durations.length > 0) {
+                    of.durations.pop();
+                }
+            }
+            actualizarTabla();
+            actualizarStats();
+        }
+
+        function toggleCorte(id) {
+            const of = ordenesTrabajo.find(o => o.id === id);
+            if (!of) return;
+            if (of.currentCutStart) {
+                of.currentCutStart = null;
+            } else {
+                of.currentCutStart = Date.now();
+            }
+            actualizarTabla();
+        }
+
+        function getAverageDuration(of) {
+            if (!of.durations || of.durations.length === 0) return 0;
+            const total = of.durations.reduce((sum, time) => sum + time, 0);
+            return Math.round(total / of.durations.length);
+        }
+
+        function formatDuration(ms) {
+            if (!ms || ms === 0) return '—';
+            const seconds = Math.round(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remaining = seconds % 60;
+            return `${minutes}m ${remaining}s`;
+        }
+    </script>
+</body>
+</html>

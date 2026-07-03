@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de corte colectores</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Arial', sans-serif;
+            background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.2), transparent 30%),
+                        radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.18), transparent 25%),
+                        #0b1120;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 16px 16px 24px 20px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: calc(100% - 40px);
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 24px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+            color: #f8fafc;
+            padding: 32px 36px;
+            text-align: center;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        header h1 {
+            font-size: clamp(2rem, 2.5vw, 3rem);
+            letter-spacing: 0.02em;
+            margin-bottom: 12px;
+        }
+
+        header p {
+            color: #cbd5e1;
+            font-size: 1rem;
+        }
+
+        .content {
+            padding: 30px 28px 34px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 22px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.95), rgba(14, 165, 233, 0.85));
+            color: #f8fafc;
+            padding: 24px 22px;
+            border-radius: 22px;
+            box-shadow: 0 20px 40px rgba(14, 165, 233, 0.18);
+            text-align: center;
+            min-height: 130px;
+        }
+
+        .stat-card h3 {
+            font-size: 2.1rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-card p {
+            opacity: 0.95;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .badge-cu { background: #fb7185; color: #111827; }
+        .badge-fe { background: #38bdf8; color: #0f172a; }
+        .badge-complete { background: #22c55e; color: #071b10; }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .group-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 18px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .group-card:hover {
+            transform: translateY(-3px);
+            border-color: #14b8a6;
+            box-shadow: 0 10px 25px rgba(20, 184, 166, 0.1);
+        }
+
+        .group-card.active {
+            border-color: #14b8a6;
+            background: linear-gradient(145deg, rgba(20, 184, 166, 0.12), rgba(15, 23, 42, 0.95));
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.25);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: rgba(15, 23, 42, 0.88);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.08);
+        }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #94a3b8; font-weight: 700; }
+        input, select { width: 100%; padding: 14px 16px; border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 14px; background: rgba(15, 23, 42, 0.7); color: #e2e8f0; }
+        
+        .btn { padding: 14px 26px; border: none; border-radius: 999px; cursor: pointer; font-size: 0.95rem; font-weight: 700; transition: all 0.25s ease; }
+        .btn-primary { background: #14b8a6; color: #0f172a; box-shadow: 0 14px 30px rgba(20, 184, 166, 0.18); }
+        .btn-success { background: #22c55e; color: #071b10; }
+        .btn-secondary { background: rgba(148, 163, 184, 0.14); color: #e2e8f0; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; border-radius: 18px; overflow: hidden; background: rgba(15, 23, 42, 0.94); }
+        th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+        th { background: linear-gradient(90deg, #0f172a 0%, #111827 100%); color: #f8fafc; }
+        tr:hover { background: rgba(16, 185, 129, 0.12); }
+
+        .optimization-result { background: rgba(15, 23, 42, 0.95); padding: 24px; border-radius: 20px; margin-top: 20px; border-left: 4px solid #22c55e; }
+        .cut-visual { margin: 18px 0; padding: 18px; background: rgba(255, 255, 255, 0.04); border-radius: 18px; overflow-x: auto; }
+        .cut-row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .cut-bar { height: 32px; background: linear-gradient(90deg, #14b8a6 0%, #0ea5e9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 10px; color: #eff6ff; font-size: 0.78rem; }
+        .cut-bar.waste { background: linear-gradient(90deg, #f87171, #dc2626); color: #fff; }
+    </style>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GESTIÓN DE CORTE: COLECTORES Y MANGUITOS</h1>
+            <p>Sincronizado con el reporte de la OT (Cantidad unitaria automática por fila).</p>
+        </header>
+
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="totalOF">0</h3>
+                    <p>Órdenes Técnicas (OT)</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalCortes">0</h3>
+                    <p>Cortes Pendientes</p>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #be123c, #9f1239);">
+                    <h3 id="materialCu">0 m</h3>
+                    <p>Cobre (Cu) Requerido</p>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #0369a1, #075985);">
+                    <h3 id="materialFe">0 m</h3>
+                    <p>Hierro / Acero Requerido</p>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 25px;">
+                <h2>📥 Cargar Reporte de la OT (.xlsx / .csv)</h2>
+                <div class="action-row">
+                    <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
+                    <button class="btn btn-primary" onclick="importarDesdeArchivo()">Procesar Archivo</button>
+                    <button class="btn btn-secondary" onclick="cargarDatosSimulados()">Cargar Ejemplo Limpio</button>
+                </div>
+            </div>
+
+            <div>
+                <h2>📦 Celdas Homogéneas de Trabajo (Estrategia 3)</h2>
+                <div id="contenedorTarjetasAgrupadas" class="cards-container" style="margin-top: 15px;">
+                    <div class="card" style="grid-column: 1/-1; text-align:center; color:#64748b;">No hay datos cargados. Selecciona el reporte arriba.</div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <h2>⚙️ Configuración del Tubo de Stock</h2>
+                    <div class="form-group">
+                        <label>Longitud Comercial de Barra (mm):</label>
+                        <input type="number" id="stockLength" value="6000">
+                    </div>
+                    <div class="form-group">
+                        <label>Merma por Disco de Sierra (mm):</label>
+                        <input type="number" id="mermaTubo" value="3">
+                    </div>
+                    <button class="btn btn-success" style="width: 100%;" onclick="optimizarCortes()">🚀 Calcular Distribución del Nesting</button>
+                </div>
+
+                <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                    <h3 style="color: #14b8a6; margin-bottom: 10px;">Modo de Producción Automático</h3>
+                    <p style="font-size: 0.9rem; color: #94a3b8; max-width: 80%;">Cada fila del reporte cuenta como **1 unidad** a cortar. El programa agrupa los diámetros automáticamente para ahorrar retales y evitar errores.</p>
+                </div>
+            </div>
+
+            <div class="card" style="width: 100%; overflow-x: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 id="tituloTabla">📋 Registros de Fabricación Cargados</h2>
+                    <button class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="limpiarFiltrosGrupo()">Mostrar Todo</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>OT Real</th>
+                            <th>Tipo Elemento</th>
+                            <th>Medida Diámetro</th>
+                            <th>Material</th>
+                            <th>Longitud Corte (mm)</th>
+                            <th>Cantidad Pedida</th>
+                            <th>Cortados</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ofTableBody">
+                        </tbody>
+                </table>
+            </div>
+
+            <div id="optimizacionResults" style="display: none; margin-top: 25px;">
+                <div class="card">
+                    <h2>📊 Mapa del Aprovechamiento de Barra (Nesting 1D)</h2>
+                    <div id="optimizationContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ordenesTrabajo = [];
+        let idCounter = 1;
+
+        window.filtroMaterialActual = null;
+        window.filtroMedidaActual = null;
+
+        function materialBadgeClass(mat) {
+            const m = String(mat || '').toLowerCase();
+            return m.includes('hierro') || m.includes('fe') ? 'badge-fe' : 'badge-cu';
+        }
+
+        function normalizarMaterial(mat) {
+            const m = String(mat || '').trim().toLowerCase();
+            if (m.includes('cu') || m.includes('cobre')) return 'Cobre';
+            if (m.includes('fe') || m.includes('hierro')) return 'Hierro';
+            return mat || 'Cobre';
+        }
+
+        // --- IMPORTADOR INTELIGENTE SIN COLUMNA CANTIDAD ---
+        function importarDesdeArchivo() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            if (!file) { alert('Por favor, selecciona tu archivo extraído.'); return; }
+
+            const isCsv = /\.csv$/i.test(file.name);
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                let workbook;
+                try {
+                    const data = e.target.result;
+                    workbook = isCsv ? XLSX.read(data, { type: 'string' }) : XLSX.read(data, { type: 'binary' });
+                } catch (err) {
+                    alert('Error técnico leyendo la estructura del archivo.');
+                    return;
+                }
+
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+                if (rows.length < 2) { alert('El archivo no contiene registros suficientes.'); return; }
+
+                // Leer y limpiar cabeceras reales
+                const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
+                
+                const idxOT = headers.indexOf('OT');
+                const idxMedida = headers.indexOf('MEDIDA_TUBO');
+                const idxMaterial = headers.indexOf('MATERIAL');
+                const idxLColector = headers.indexOf('L_COLECTOR');
+                const idxLManguito = headers.indexOf('L_MANGUITO');
+
+                if (idxOT === -1 || idxMedida === -1 || idxMaterial === -1) {
+                    alert('Formato incompatible. Verifica que el archivo tenga las cabeceras exactas: OT, MEDIDA_TUBO, MATERIAL, L_COLECTOR y L_MANGUITO.');
+                    return;
+                }
+
+                const nuevosRegistros = [];
+
+                // Recorrer filas asumiendo cantidad = 1 por defecto por cada registro
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length === 0 || !row[idxOT]) continue;
+
+                    const otReal = String(row[idxOT]).trim();
+                    const medida = String(row[idxMedida]).trim();
+                    const material = normalizarMaterial(row[idxMaterial]);
+                    const cantidadFila = 1; // Ajuste automático: Cada línea es un tubo físico
+
+                    // Si hay longitud de colector válida en la celda
+                    if (idxLColector !== -1 && row[idxLColector] && parseInt(row[idxLColector], 10) > 0) {
+                        nuevosRegistros.push({
+                            id: idCounter++,
+                            numero: otReal,
+                            tipo: 'colector',
+                            medida: medida,
+                            material: material,
+                            longitud: parseInt(row[idxLColector], 10),
+                            cantidad: cantidadFila,
+                            completedCount: 0
+                        });
+                    }
+
+                    // Si hay longitud de manguito válida en la celda
+                    if (idxLManguito !== -1 && row[idxLManguito] && parseInt(row[idxLManguito], 10) > 0) {
+                        nuevosRegistros.push({
+                            id: idCounter++,
+                            numero: otReal,
+                            tipo: 'manguito',
+                            medida: medida,
+                            material: material,
+                            longitud: parseInt(row[idxLManguito], 10),
+                            cantidad: cantidadFila,
+                            completedCount: 0
+                        });
+                    }
+                }
+
+                ordenesTrabajo = ordenesTrabajo.concat(nuevosRegistros);
+                notificarCambios();
+                fileInput.value = '';
+                alert(`¡Éxito! Procesadas ${nuevosRegistros.length} piezas listas para el nesting de corte.`);
+            };
+
+            if (isCsv) reader.readAsText(file, 'UTF-8');
+            else reader.readAsBinaryString(file);
+        }
+
+        // --- PROCESAMIENTO LEAN (ESTRATEGIA 3) ---
+        function obtenerBloquesAgrupados() {
+            const grupos = {};
+            ordenesTrabajo.forEach(of => {
+                const pendientes = Math.max(0, of.cantidad - of.completedCount);
+                if (pendientes === 0) return;
+
+                const clave = `${of.material}-${of.medida}`;
+                if (!grupos[clave]) {
+                    grupos[clave] = { material: of.material, medida: of.medida, cantidadLineas: 0, cortesTotales: 0, mmTotales: 0 };
+                }
+                grupos[clave].cantidadLineas++;
+                grupos[clave].cortesTotales += pendientes;
+                grupos[clave].mmTotales += (of.longitud * pendientes);
+            });
+            return Object.values(grupos);
+        }
+
+        function renderizarTarjetas() {
+            const contenedor = document.getElementById('contenedorTarjetasAgrupadas');
+            contenedor.innerHTML = '';
+            const bloques = obtenerBloquesAgrupados();
+
+            if (bloques.length === 0) {
+                contenedor.innerHTML = `<div class="card" style="grid-column: 1/-1; text-align:center; color:#64748b; padding:20px;">No hay cortes pendientes en la cola de producción.</div>`;
+                return;
+            }
+
+            bloques.forEach(b => {
+                const esActivo = window.filtroMaterialActual === b.material && window.filtroMedidaActual === b.medida;
+                const tarjeta = document.createElement('div');
+                tarjeta.className = `group-card ${esActivo ? 'active' : ''}`;
+
+                tarjeta.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span class="badge ${materialBadgeClass(b.material)}">${b.material}</span>
+                        <strong style="font-size:1.25rem;">Ø ${b.medida}</strong>
+                    </div>
+                    <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:4px;">Líneas en OT: <strong>${b.cantidadLineas}</strong></p>
+                    <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Piezas a cortar: <strong style="color:#14b8a6;">${b.cortesTotales} uds</strong></p>
+                    <div style="font-size:0.8rem; background:rgba(0,0,0,0.2); padding:6px; border-radius:8px; text-align:center;">
+                        Metraje de barra: <strong> ${(b.mmTotales / 1000).toFixed(2)} m</strong>
+                    </div>
+                `;
+
+                tarjeta.onclick = () => {
+                    if (esActivo) {
+                        window.filtroMaterialActual = null;
+                        window.filtroMedidaActual = null;
+                        document.getElementById('tituloTabla').textContent = "📋 Registros de Fabricación Cargados";
+                    } else {
+                        window.filtroMaterialActual = b.material;
+                        window.filtroMedidaActual = b.medida;
+                        document.getElementById('tituloTabla').textContent = `🎯 Filtrado Celda: ${b.material} - Ø ${b.medida}`;
+                    }
+                    renderizarTarjetas();
+                    actualizarTabla();
+                };
+
+                contenedor.appendChild(tarjeta);
+            });
+        }
+
+        function actualizarTabla() {
+            const tbody = document.getElementById('ofTableBody');
+            tbody.innerHTML = '';
+
+            ordenesTrabajo.forEach(of => {
+                if (window.filtroMaterialActual && of.material !== window.filtroMaterialActual) return;
+                if (window.filtroMedidaActual && of.medida !== window.filtroMedidaActual) return;
+
+                const pendientes = Math.max(0, of.cantidad - of.completedCount);
+                const styleCompleto = pendientes === 0 ? 'opacity:0.4; text-decoration: line-through;' : '';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="${styleCompleto}"><strong>${of.numero}</strong></td>
+                    <td style="${styleCompleto}">${of.tipo.toUpperCase()}</td>
+                    <td style="${styleCompleto}">${of.medida}</td>
+                    <td style="${styleCompleto}"><span class="badge ${materialBadgeClass(of.material)}">${of.material}</span></td>
+                    <td style="${styleCompleto}"><strong>${of.longitud} mm</strong></td>
+                    <td style="${styleCompleto}">${of.cantidad}</td>
+                    <td style="${styleCompleto}">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="ajustarCorte(${of.id}, -1)">-</button>
+                            <span style="font-weight:bold; min-width:20px; text-align:center;">${of.completedCount}</span>
+                            <button class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="ajustarCorte(${of.id}, 1)">+</button>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn" style="background:#ef4444; color:white; padding: 4px 10px; font-size: 11px;" onclick="eliminarFila(${of.id})">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // --- ALGORITMO OPTIMIZADOR NESTING 1D ---
+        function optimizarCortes() {
+            if (ordenesTrabajo.length === 0) { alert('No hay datos en la cola.'); return; }
+            const stockLength = parseInt(document.getElementById('stockLength').value, 10);
+            const mermaTubo = parseInt(document.getElementById('mermaTubo').value, 10);
+
+            const grupos = {};
+            ordenesTrabajo.forEach(of => {
+                if (window.filtroMaterialActual && of.material !== window.filtroMaterialActual) return;
+                if (window.filtroMedidaActual && of.medida !== window.filtroMedidaActual) return;
+                
+                const pendientes = Math.max(0, of.cantidad - of.completedCount);
+                if (pendientes === 0) return;
+
+                const clave = `${of.medida}-${of.material}`;
+                if (!grupos[clave]) grupos[clave] = [];
+                for (let i = 0; i < pendientes; i++) {
+                    grupos[clave].push({ ot: of.numero, longitud: of.longitud, tipo: of.tipo });
+                }
+            });
+
+            if (Object.keys(grupos).length === 0) { alert('No hay piezas pendientes de corte para este criterio.'); return; }
+
+            let html = '';
+            for (const [key, cortes] of Object.entries(grupos)) {
+                const [medida, material] = key.split('-');
+                cortes.sort((a, b) => b.longitud - a.longitud);
+
+                const barras = [];
+                cortes.forEach(c => {
+                    let metido = false;
+                    for (let b of barras) {
+                        if ((stockLength - b.usado - mermaTubo) >= c.longitud) {
+                            b.cortes.push(c);
+                            b.usado += c.longitud + mermaTubo;
+                            metido = true;
+                            break;
+                        }
+                    }
+                    if (!metido) {
+                        barras.push({ cortes: [c], usado: c.longitud + mermaTubo });
+                    }
+                });
+
+                let despGrupo = 0;
+                barras.forEach(b => despGrupo += (stockLength - b.usado));
+
+                html += `
+                    <div class="optimization-result">
+                        <h3>Perfil: ${material} | Diámetro: ${medida}</h3>
+                        <p>Barras de stock necesarias (6m): <strong>${barras.length} unidades</strong></p>
+                        <p>Sobrante/Desperdicio en taller: <strong>${(despGrupo/1000).toFixed(2)} m</strong></p>
+                `;
+
+                barras.forEach((b, idx) => {
+                    html += `
+                        <div class="cut-visual">
+                            <span style="font-size:11px; font-weight:bold;">Barra #${idx+1}:</span>
+                            <div class="cut-row" style="margin-top:6px;">
+                                ${b.cortes.map(c => `<div class="cut-bar" style="flex-grow: ${c.longitud}">${c.ot} [${c.longitud}mm]</div>`).join('')}
+                                <div class="cut-bar waste" style="flex-grow: ${stockLength - b.usado}; min-width:30px;">Retal: ${stockLength - b.usado}mm</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            document.getElementById('optimizationContent').innerHTML = html;
+            document.getElementById('optimizacionResults').style.display = 'block';
+            document.getElementById('optimizacionResults').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function ajustarCorte(id, valor) {
+            const item = ordenesTrabajo.find(o => o.id === id);
+            if (!item) return;
+            item.completedCount = Math.max(0, Math.min(item.cantidad, item.completedCount + valor));
+            notificarCambios();
+        }
+
+        function eliminarFila(id) {
+            ordenesTrabajo = ordenesTrabajo.filter(o => o.id !== id);
+            notificarCambios();
+        }
+
+        function limpiarFiltrosGrupo() {
+            window.filtroMaterialActual = null;
+            window.filtroMedidaActual = null;
+            document.getElementById('tituloTabla').textContent = "📋 Registros de Fabricación Cargados";
+            renderizarTarjetas();
+            actualizarTabla();
+        }
+
+        function notificarCambios() {
+            const uniqueOTs = [...new Set(ordenesTrabajo.map(o => o.numero))].length;
+            document.getElementById('totalOF').textContent = uniqueOTs;
+
+            let cortesPends = 0;
+            let mCu = 0; let mFe = 0;
+
+            ordenesTrabajo.forEach(o => {
+                const p = Math.max(0, o.cantidad - o.completedCount);
+                cortesPends += p;
+                const m = (o.longitud * p) / 1000;
+                if (o.material === 'Cobre') mCu += m;
+                else mFe += m;
+            });
+
+            document.getElementById('totalCortes').textContent = cortesPends;
+            document.getElementById('materialCu').textContent = mCu.toFixed(1) + ' m';
+            document.getElementById('materialFe').textContent = mFe.toFixed(1) + ' m';
+
+            renderizarTarjetas();
+            actualizarTabla();
+        }
+
+        function cargarDatosSimulados() {
+            ordenesTrabajo = [
+                { id: idCounter++, numero: 'OT-10025', tipo: 'colector', medida: '1/2', material: 'Cobre', longitud: 1250, cantidad: 1, completedCount: 0 },
+                { id: idCounter++, numero: 'OT-10025', tipo: 'manguito', medida: '1/2', material: 'Cobre', longitud: 450, cantidad: 1, completedCount: 0 },
+                { id: idCounter++, numero: 'OT-10026', tipo: 'colector', medida: '7/8', material: 'Hierro', longitud: 1600, cantidad: 1, completedCount: 0 }
+            ];
+            notificarCambios();
+        }
+    </script>
+</body>
+</html>

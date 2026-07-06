@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Plataforma de gestión de corte de colectores y tubos con optimización inteligente y persistencia en tiempo real">
+    <title>Colectores — Gestión de Corte de Tubo</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <!-- SheetJS for Excel/CSV import -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- ==========================================
+         SIDEBAR
+         ========================================== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="logo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div>
+                <h2>COLECTORES</h2>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-section="dashboard">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-section="import">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                <span class="nav-text">Importar</span>
+            </a>
+            <a href="#" class="nav-item" data-section="ordenes">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="13" y2="15"/></svg></span>
+                <span class="nav-text">Órdenes</span>
+                <span class="nav-badge" id="ordenesNavBadge" style="display:none">0</span>
+            </a>
+            <a href="#" class="nav-item" data-section="nueva-of">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+                <span class="nav-text">Nueva OF</span>
+            </a>
+            <a href="#" class="nav-item" data-section="optimizacion">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+                <span class="nav-text">Optimización</span>
+            </a>
+            <a href="#" class="nav-item" data-section="stock">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+                <span class="nav-text">Stock</span>
+            </a>
+            <a href="#" class="nav-item" data-section="config">
+                <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
+                <span class="nav-text">Configuración</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="connection-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="nav-text" id="statusText">Conectando...</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==========================================
+         MAIN CONTENT
+         ========================================== -->
+    <main class="main-content" id="mainContent">
+
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <span class="mobile-header-title">COLECTORES</span>
+            <button class="mobile-menu-btn" id="mobileMenuBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        </div>
+
+        <!-- ======== DASHBOARD ======== -->
+        <section class="section" id="section-dashboard">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Dashboard</h1>
+                    <p class="section-subtitle">Vista general del estado de producción</p>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-primary" onclick="App.navigateTo('import')">Importar OFs</button>
+                    <button class="btn btn-secondary" onclick="App.optimizarCortes()">Optimizar Cortes</button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card teal">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
+                    <div class="stat-value" id="statTotalOF">0</div>
+                    <div class="stat-label">Órdenes de Trabajo</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M13 21V3l6 4v14"/><path d="M9 9v.01M9 12v.01M9 15v.01M17 9v.01M17 12v.01"/></svg></div>
+                    <div class="stat-value" id="statEquipos">0</div>
+                    <div class="stat-label">Equipos</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                    <div class="stat-value" id="statEquiposCompletos">0</div>
+                    <div class="stat-label">Equipos Completados</div>
+                </div>
+                <div class="stat-card amber">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div>
+                    <div class="stat-value" id="statCortesPendientes">0</div>
+                    <div class="stat-label">Cortes Pendientes</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-value" id="statCortesRealizados">0</div>
+                    <div class="stat-label">Cortes Realizados</div>
+                </div>
+                <div class="stat-card pink">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div class="stat-value" id="statTiempoMedio">—</div>
+                    <div class="stat-label">Tiempo Medio / Corte</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></div>
+                    <div class="stat-value" id="statMetrosCobre">0 m</div>
+                    <div class="stat-label">Metros Cobre Pend.</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></div>
+                    <div class="stat-value" id="statMetrosHierro">0 m</div>
+                    <div class="stat-label">Metros Hierro Pend.</div>
+                </div>
+            </div>
+
+            <!-- Quick recent orders preview -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Últimas Órdenes</h3>
+                    <button class="btn btn-ghost btn-sm" onclick="App.navigateTo('ordenes')">Ver todas →</button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>OF</th><th>Tipo</th><th>Medida</th><th>Material</th>
+                                <th>Longitud</th><th>Cantidad</th><th>Progreso</th><th>Prioridad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardTableBody">
+                            <tr><td colspan="8"><div class="table-empty"><div class="table-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="13" y2="15"/></svg></div><div class="table-empty-text">Sin órdenes de trabajo</div></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======== IMPORT ======== -->
+        <section class="section" id="section-import" style="display:none">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Importar Órdenes</h1>
+                    <p class="section-subtitle">Importa desde archivo Excel/CSV o pega datos manualmente</p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <!-- File Import -->
+                <div class="card">
+                    <h3 class="card-title mb-4">Desde Archivo</h3>
+                    <div class="import-zone" id="importZone">
+                        <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
+                        <div class="import-zone-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
+                        <div class="import-zone-text">
+                            <strong>Arrastra un archivo</strong> o haz clic para seleccionar<br>
+                            <span class="text-xs text-muted">Formatos: .xlsx, .xls, .csv</span>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="Import.importarDesdeArchivo()">Importar Archivo</button>
+                    </div>
+                </div>
+
+                <!-- Text Import -->
+                <div class="card">
+                    <h3 class="card-title mb-4">Pegar Texto</h3>
+                    <textarea class="form-textarea" id="importText"
+                        placeholder="Pega aquí el listado de OFs.&#10;Formato: OF;tipo;medida;material;longitud;cantidad;prioridad&#10;Ejemplo: OF-001;colector;1/2;Cobre;1460;2;Alta"></textarea>
+                    <div class="form-hint">Separadores aceptados: punto y coma (;), tabulador, coma</div>
+                    <div class="mt-4 action-row">
+                        <button class="btn btn-primary" onclick="Import.importarDesdeTexto()">Importar Texto</button>
+                        <button class="btn btn-secondary" onclick="Import.cargarEjemplo()">Cargar Ejemplo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column Mapper (hidden until needed) -->
+            <div class="card mt-6 column-mapper" id="columnMapper">
+                <h3 class="card-title mb-4">Mapear Columnas</h3>
+                <p class="form-hint mb-4">Selecciona qué columna del archivo corresponde a cada campo.</p>
+                <div class="mapper-grid">
+                    <div class="form-group">
+                        <label class="form-label">OF / Número</label>
+                        <select class="form-select" id="map_numero"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" id="map_tipo"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Medida</label>
+                        <select class="form-select" id="map_medida"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Material</label>
+                        <select class="form-select" id="map_material"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Longitud (mm)</label>
+                        <select class="form-select" id="map_longitud"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cantidad</label>
+                        <select class="form-select" id="map_cantidad"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Prioridad (opcional)</label>
+                        <select class="form-select" id="map_prioridad"></select>
+                    </div>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-success" onclick="Import.applyColumnMapping()">Importar con este mapeo</button>
+                    <button class="btn btn-secondary" onclick="Import.cancelMapper()">Cancelar</button>
+                </div>
+                <div id="mapperPreview" class="mapper-preview mt-4"></div>
+            </div>
+        </section>
+
+        <!-- ======== ORDENES ======== -->
+        <section class="section" id="section-ordenes" style="display:none">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Órdenes de Trabajo</h1>
+                    <p class="section-subtitle">Gestiona y controla el progreso de cortes</p>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-primary btn-sm" onclick="App.navigateTo('import')">Importar</button>
+                    <button class="btn btn-danger btn-sm" onclick="App.eliminarTodas()">Eliminar Todas</button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <div class="search-wrapper">
+                    <input type="text" class="form-input search-input" id="filterSearch" placeholder="Buscar OF, tipo, medida...">
+                </div>
+                <select class="form-select" id="filterMaterial">
+                    <option value="">Todo Material</option>
+                    <option value="Cobre">Cobre</option>
+                    <option value="Hierro">Hierro</option>
+                </select>
+                <select class="form-select" id="filterPrioridad">
+                    <option value="">Toda Prioridad</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Baja">Baja</option>
+                </select>
+                <select class="form-select" id="filterEstado">
+                    <option value="">Todo Estado</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="completado">Completado</option>
+                </select>
+            </div>
+
+            <!-- Orders Table -->
+            <div class="card">
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>OF</th>
+                                <th>Tipo</th>
+                                <th>Medida</th>
+                                <th>Material</th>
+                                <th>Long. (mm)</th>
+                                <th>Cantidad</th>
+                                <th>Completados</th>
+                                <th>Prioridad</th>
+                                <th>Equipo</th>
+                                <th>Tiempo</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ofTableBody">
+                            <tr><td colspan="11"><div class="table-empty"><div class="table-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div><div class="table-empty-text">No hay órdenes de trabajo</div></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======== NUEVA OF ======== -->
+        <section class="section" id="section-nueva-of" style="display:none">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Nueva Orden de Trabajo</h1>
+                    <p class="section-subtitle">Añadir una OF manualmente</p>
+                </div>
+            </div>
+
+            <div class="card" style="max-width: 700px;">
+                <form id="ofForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">OF / Número *</label>
+                            <input type="text" class="form-input" id="ofNumero" required placeholder="Ej: OF-001">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="ofTipo">
+                                <option value="colector">Colector</option>
+                                <option value="manguito">Manguito</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Medida *</label>
+                            <select class="form-select" id="ofMedida" required>
+                                <option value="1/2">1/2"</option>
+                                <option value="3/8">3/8"</option>
+                                <option value="5/8">5/8"</option>
+                                <option value="2">2"</option>
+                                <option value="1 5/8">1 5/8"</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Material *</label>
+                            <select class="form-select" id="ofMaterial" required>
+                                <option value="Cobre">Cobre</option>
+                                <option value="Hierro">Hierro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Longitud (mm) *</label>
+                            <input type="number" class="form-input" id="ofLongitud" required placeholder="Ej: 1460" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Cantidad *</label>
+                            <input type="number" class="form-input" id="ofCantidad" required placeholder="Ej: 2" min="1" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Prioridad</label>
+                            <select class="form-select" id="ofPrioridad">
+                                <option value="Normal">Normal</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Baja">Baja</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Añadir Orden</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ======== OPTIMIZACIÓN ======== -->
+        <section class="section" id="section-optimizacion" style="display:none">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Optimización de Cortes</h1>
+                    <p class="section-subtitle">Minimiza desperdicio agrupando cortes en tubos</p>
+                </div>
+            </div>
+
+            <div class="card mb-6" style="max-width: 600px;">
+                <h3 class="card-title mb-4">Parámetros</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Longitud tubo estándar (mm)</label>
+                        <input type="number" class="form-input" id="optStockLength" value="6000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Merma por corte (mm)</label>
+                        <input type="number" class="form-input" id="optMerma" value="3">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="App.optimizarCortes()">Ejecutar Optimización</button>
+            </div>
+
+            <div id="optimizationContent" style="display:none">
+                <!-- Results rendered here by optimizer.js -->
+            </div>
+        </section>
+
+        <!-- ======== STOCK ======== -->
+        <section class="section" id="section-stock" style="display:none">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Stock de Tubos</h1>
+                    <p class="section-subtitle">Gestiona el inventario de tubos disponibles</p>
+                </div>
+            </div>
+
+            <!-- Add stock form -->
+            <div class="card mb-6" style="max-width: 600px;">
+                <h3 class="card-title mb-4">Añadir Stock</h3>
+                <form id="stockForm">
+                    <div class="form-inline">
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Medida</label>
+                            <select class="form-select" id="newStockMedida">
+                                <option value="1/2">1/2"</option>
+                                <option value="3/8">3/8"</option>
+                                <option value="5/8">5/8"</option>
+                                <option value="2">2"</option>
+                                <option value="1 5/8">1 5/8"</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Material</label>
+                            <select class="form-select" id="newStockMaterial">
+                                <option value="Cobre">Cobre</option>
+                                <option value="Hierro">Hierro</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" class="form-input" id="newStockCantidad" value="10" min="0" style="width:100px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end;">Añadir</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Stock Table -->
+            <div class="card">
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Medida</th>
+                                <th>Material</th>
+                                <th>Cantidad</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody">
+                            <tr><td colspan="4"><div class="table-empty"><div class="table-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div><div class="table-empty-text">Cargando stock...</div></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======== CONFIGURACIÓN ======== -->
+        <section class="section" id="section-config" style="display:none">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Configuración</h1>
+                    <p class="section-subtitle">Ajustes generales de la plataforma</p>
+                </div>
+            </div>
+
+            <div class="card" style="max-width: 700px;">
+                <form id="configForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Longitud estándar de tubos (mm)</label>
+                            <input type="number" class="form-input" id="configTubeLength" value="6000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Merma por corte (mm)</label>
+                            <input type="number" class="form-input" id="configMerma" value="3">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Medidas disponibles</label>
+                        <input type="text" class="form-input" id="configMedidas" value="1/2, 3/8, 5/8, 2, 1 5/8">
+                        <div class="form-hint">Separadas por coma</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Materiales</label>
+                        <input type="text" class="form-input" id="configMateriales" value="Cobre, Hierro">
+                        <div class="form-hint">Separados por coma</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipos de pieza</label>
+                        <input type="text" class="form-input" id="configTipos" value="colector, manguito">
+                        <div class="form-hint">Separados por coma</div>
+                    </div>
+                    <div class="mt-6">
+                        <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card mt-6" style="max-width: 700px;">
+                <h3 class="card-title mb-4">Conexión Firebase</h3>
+                <div class="form-group">
+                    <label class="form-label">Proyecto</label>
+                    <p class="text-sm">colectores-7284c</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Estado</label>
+                    <p class="text-sm">
+                        <span class="status-dot connected" style="display:inline-block;vertical-align:middle;margin-right:6px;"></span>
+                        Conectado a Firestore
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reglas de seguridad</label>
+                    <p class="text-sm text-muted">Modo desarrollo — Caduca: 5 Agosto 2026</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts (order matters!) -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/optimizer.js"></script>
+    <script src="js/import.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>

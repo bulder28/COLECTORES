@@ -228,11 +228,36 @@ async function importarTexto() {
 
 async function cargarEjemplo() {
   const ejemplos = [
-    { numero: 'OF-001', norden_padre: '', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 1460, longitud_manguito: 546, cantidad: 2, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
-    { numero: 'OF-002', norden_padre: '', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Normal', longitud: 1200, longitud_manguito: null, cantidad: 4, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    // ═══ COBRE 1/2" ═══
+    // BAT-101 (Alta) — piezas cortas
+    { numero: 'OF-001', norden_padre: 'BAT-101', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 800, longitud_manguito: null, cantidad: 4, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-002', norden_padre: 'BAT-101', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 650, longitud_manguito: null, cantidad: 3, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+
+    // BAT-102 (Alta) — piezas largas (MISMA prioridad que BAT-101!)
+    { numero: 'OF-003', norden_padre: 'BAT-102', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 2800, longitud_manguito: null, cantidad: 3, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-004', norden_padre: 'BAT-102', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 1900, longitud_manguito: null, cantidad: 2, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+
+    // BAT-103 (Alta) — mezcla de tamaños (MISMA prioridad!)
+    { numero: 'OF-005', norden_padre: 'BAT-103', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 3500, longitud_manguito: null, cantidad: 2, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-006', norden_padre: 'BAT-103', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 1200, longitud_manguito: null, cantidad: 3, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-007', norden_padre: 'BAT-103', tipo: 'colector', medida: '1/2', material: 'Cobre', prioridad: 'Alta', longitud: 450, longitud_manguito: null, cantidad: 4, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+
+    // ═══ HIERRO 3/8" ═══
+    // BAT-201 (Alta) — tubos medianos
+    { numero: 'OF-008', norden_padre: 'BAT-201', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 2200, longitud_manguito: null, cantidad: 3, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-009', norden_padre: 'BAT-201', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 1100, longitud_manguito: null, cantidad: 4, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+
+    // BAT-202 (Alta) — tubos grandes y pequeños (MISMA prioridad!)
+    { numero: 'OF-010', norden_padre: 'BAT-202', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 4200, longitud_manguito: null, cantidad: 2, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-011', norden_padre: 'BAT-202', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 700, longitud_manguito: null, cantidad: 5, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-012', norden_padre: 'BAT-202', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 1500, longitud_manguito: null, cantidad: 3, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+
+    // BAT-203 (Alta) — piezas de relleno (MISMA prioridad!)
+    { numero: 'OF-013', norden_padre: 'BAT-203', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 3100, longitud_manguito: null, cantidad: 2, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
+    { numero: 'OF-014', norden_padre: 'BAT-203', tipo: 'colector', medida: '3/8', material: 'Hierro', prioridad: 'Alta', longitud: 550, longitud_manguito: null, cantidad: 6, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente' },
   ]
   await store.importar(ejemplos)
-  resultado.value = { type: 'success', msg: 'Datos de ejemplo cargados (2 órdenes)' }
+  resultado.value = { type: 'success', msg: 'Datos de ejemplo cargados (14 OFs / 6 baterías / ~50 piezas)' }
 }
 </script>
 

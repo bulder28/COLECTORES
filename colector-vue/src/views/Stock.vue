@@ -7,71 +7,209 @@
       </div>
     </div>
 
-    <div class="card mb-6" style="max-width:600px;">
-      <h3 class="card-title mb-4">Añadir Stock</h3>
-      <form @submit.prevent="agregar">
-        <div class="form-inline">
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Medida</label>
-            <select class="form-select" v-model="form.medida">
-              <option value="1/2">1/2"</option><option value="3/8">3/8"</option>
-              <option value="5/8">5/8"</option><option value="2">2"</option>
-              <option value="1 5/8">1 5/8"</option>
-            </select>
+    <div class="card mt-6" style="min-height: 70vh;">
+      <h3 class="card-title mb-4">Estantería de Retales Físicos (Cantilever)</h3>
+      
+      <div v-if="stock.loading" class="table-empty"><div class="table-empty-text">Cargando...</div></div>
+      <div v-else-if="stock.retales.length === 0" class="rack-empty">
+        <p style="color:#9ca3af; margin-bottom:12px;">Estantería vacía — Aún no se han generado retales</p>
+        <button class="btn btn-sm" style="background:#374151; color:#d1d5db;" @click="cargarRetalesDemo">Cargar retales de demostración</button>
+      </div>
+      
+      <div v-else class="cantilever-rack">
+        
+        <!-- Niveles (Estantes) -->
+        <div class="shelf" v-for="(shelfGroup, index) in groupedRetales" :key="index">
+          <div class="tubes-container">
+            <div v-for="item in shelfGroup" :key="item.id" 
+                 class="sw-tube" 
+                 :class="item.material === 'Cobre' ? 'sw-copper' : 'sw-iron'"
+                 :style="{ width: Math.max(10, (item.longitud / 6000 * 100)) + '%' }"
+                 :title="`${item.material} ${item.medida}\&#34; - ${item.longitud}mm`">
+                 
+              <div class="sw-specular"></div>
+              <span class="sw-label">{{ item.longitud }}mm</span>
+              
+              <!-- Botón eliminar -->
+              <button class="delete-tube-btn" @click.stop="stock.eliminar(item.id)" title="Consumir / Tirar">×</button>
+            </div>
           </div>
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Material</label>
-            <select class="form-select" v-model="form.material">
-              <option value="Cobre">Cobre</option>
-              <option value="Hierro">Hierro</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Cantidad</label>
-            <input type="number" class="form-input" v-model.number="form.cantidad" min="0" style="width:100px;">
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end;">Añadir</button>
         </div>
-      </form>
-    </div>
-
-    <div class="card">
-      <div class="table-wrapper">
-        <table>
-          <thead><tr><th>Medida</th><th>Material</th><th>Cantidad</th><th>Acción</th></tr></thead>
-          <tbody>
-            <tr v-if="stock.loading"><td colspan="4"><div class="table-empty"><div class="table-empty-text">Cargando...</div></div></td></tr>
-            <tr v-else-if="stock.items.length === 0"><td colspan="4"><div class="table-empty"><div class="table-empty-text">No hay stock configurado</div></div></td></tr>
-            <tr v-for="item in stock.items" :key="item.id">
-              <td>{{ item.medida }}"</td>
-              <td><span class="badge" :class="item.material === 'Cobre' ? 'badge-cobre' : 'badge-hierro'">{{ item.material }}</span></td>
-              <td>
-                <input type="number" class="form-input stock-input" :value="item.cantidad"
-                  @change="stock.actualizar(item.id, $event.target.value)" min="0">
-              </td>
-              <td>
-                <button class="btn btn-ghost btn-icon btn-xs" @click="stock.eliminar(item.id)" style="color:var(--red)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useStockStore } from '../stores/stock'
 
 const stock = useStockStore()
-const form = ref({ medida: '1/2', material: 'Cobre', cantidad: 10 })
 
-async function agregar() {
-  await stock.agregar(form.value.medida, form.value.material, form.value.cantidad)
+async function cargarRetalesDemo() {
+  const demos = [
+    { medida: '1/2', material: 'Cobre', longitud: 3200 },
+    { medida: '1/2', material: 'Cobre', longitud: 1540 },
+    { medida: '3/8', material: 'Hierro', longitud: 2800 },
+    { medida: '3/8', material: 'Hierro', longitud: 900 },
+    { medida: '1/2', material: 'Cobre', longitud: 4100 },
+    { medida: '5/8', material: 'Hierro', longitud: 600 },
+    { medida: '3/8', material: 'Cobre', longitud: 2100 },
+  ];
+  for (const r of demos) {
+    await stock.agregarRetal(r.medida, r.material, r.longitud);
+  }
 }
+
+const groupedRetales = computed(() => {
+  // Agrupamos en lotes de 4 o 5 tubos para hacer múltiples estantes
+  const chunks = [];
+  const items = stock.retales;
+  for (let i = 0; i < items.length; i += 5) {
+    chunks.push(items.slice(i, i + 5));
+  }
+  return chunks;
+});
 </script>
+
+<style scoped>
+.cantilever-rack {
+  position: relative;
+  background-image: url('/rack_real.png');
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-color: #f8fafc; /* Color claro para la imagen real */
+  border-radius: 8px;
+  padding: 60px 20px 20px;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+  overflow: hidden;
+  border: 2px solid #1a202c;
+  box-shadow: inset 0 10px 40px rgba(0,0,0,0.8);
+}
+
+/* Estantes (Brazos) */
+.shelf {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Contenedor de tubos apoyados */
+.tubes-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 15px;
+  padding: 0 10px;
+  position: relative;
+  z-index: 4;
+}
+
+/* Estilo del tubo (Render SolidWorks) */
+.sw-tube {
+  height: 36px;
+  border-radius: 18px; /* Cilindro visto lateralmente, bordes redondeados */
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.6);
+  min-width: 60px; /* Para que el texto quepa */
+}
+
+.sw-tube:hover {
+  transform: translateY(-8px);
+  filter: brightness(1.2);
+  z-index: 10;
+}
+
+.sw-copper {
+  background: linear-gradient(180deg, 
+    #5a2b18 0%, 
+    #a85232 15%, 
+    #e8825d 30%, 
+    #ffb499 45%, 
+    #e8825d 60%, 
+    #a85232 85%, 
+    #4a2111 100%
+  );
+}
+
+.sw-iron {
+  background: linear-gradient(180deg, 
+    #2c3035 0%, 
+    #58606a 15%, 
+    #9aa5b1 30%, 
+    #d1d8e0 45%, 
+    #9aa5b1 60%, 
+    #58606a 85%, 
+    #1f2226 100%
+  );
+}
+
+.sw-specular {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  height: 15%;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.sw-label {
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Botón eliminar estilo chatarra */
+.delete-tube-btn {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  background: #ef4444;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+
+.sw-tube:hover .delete-tube-btn {
+  opacity: 1;
+}
+
+.delete-tube-btn:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+
+.rack-empty {
+  background: #111827;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  border: 1px dashed #374151;
+}
+</style>

@@ -6,6 +6,7 @@ import NuevaOf from '../views/NuevaOf.vue'
 import Optimizacion from '../views/Optimizacion.vue'
 import Stock from '../views/Stock.vue'
 import Config from '../views/Config.vue'
+import Planificador from '../views/Planificador.vue'
 
 const routes = [
   { path: '/', name: 'dashboard', component: Dashboard },
@@ -13,6 +14,7 @@ const routes = [
   { path: '/import', name: 'import', component: Import },
   { path: '/nueva-of', name: 'nueva-of', component: NuevaOf },
   { path: '/optimizacion', name: 'optimizacion', component: Optimizacion },
+  { path: '/planificador', name: 'planificador', component: Planificador },
   { path: '/stock', name: 'stock', component: Stock },
   { path: '/config', name: 'config', component: Config },
 ]

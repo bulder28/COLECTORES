@@ -39,6 +39,10 @@ export const useOrdenesStore = defineStore('ordenes', {
   },
 
   actions: {
+    setAlgoritmo(algo) {
+      this.algoritmoActual = algo
+    },
+
     startListening() {
       if (this._unsubscribe) return
       const q = query(collection(db, 'ordenes_trabajo'), orderBy('creado_en', 'desc'))

@@ -11,6 +11,40 @@
       </div>
     </div>
 
+    <!-- Cyberpunk Dashboard -->
+    <div class="cyber-dashboard">
+      <Gauge 
+        :value="porcentajeAvance" 
+        :max="100" 
+        label="Progreso Total" 
+        unit="%" 
+        color="#00d2ff" 
+      />
+      <Gauge 
+        :value="cortesRealizados" 
+        :max="store.totalCortes || cortesRealizados + cortesPendientes || 1" 
+        label="Cortes Hechos" 
+        unit="u" 
+        color="#00ffaa" 
+      />
+      <Gauge 
+        :value="94" 
+        :max="100" 
+        label="Aprov. Material" 
+        unit="%" 
+        color="#ffaa00" 
+      />
+    </div>
+
+    <!-- Demostración de Tubos 3D -->
+    <div class="card" style="margin-bottom: 30px;">
+      <div class="card-header"><h3 class="card-title">Previsualización de Cortes Físicos</h3></div>
+      <div style="padding: 20px;">
+        <BarVisualizer :bar="mockCobre" />
+        <BarVisualizer :bar="mockHierro" />
+      </div>
+    </div>
+
     <!-- Stats -->
     <div class="stats-grid">
       <div class="stat-card teal">
@@ -107,8 +141,41 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useOrdenesStore } from '../stores/ordenes'
+import Gauge from '../components/Gauge.vue'
+import BarVisualizer from '../components/BarVisualizer.vue'
 
 const store = useOrdenesStore()
+
+// Mock data para ver el tubo 3D
+const mockCobre = {
+  id: "BAR-001",
+  isNew: true,
+  material: "Cobre",
+  tubSize: "1 5/8",
+  originalLength: 6000,
+  remaining: 1800,
+  cuts: [
+    { length: 1500, orderId: "OF-1001" },
+    { length: 1500, orderId: "OF-1002" },
+    { length: 1200, orderId: "OF-1003" }
+  ],
+  newScrapGenerated: true
+};
+
+const mockHierro = {
+  id: "USED-SCRAP-002",
+  isNew: false,
+  material: "Hierro",
+  tubSize: "2",
+  originalLength: 3000,
+  remaining: 400,
+  cuts: [
+    { length: 1600, orderId: "OF-1020" },
+    { length: 1000, orderId: "OF-1021" }
+  ],
+  newScrapGenerated: false
+};
+
 
 const recentOrdenes = computed(() => store.ordenes.slice(0, 8))
 
@@ -127,6 +194,12 @@ const cortesPendientes = computed(() =>
 const cortesRealizados = computed(() =>
   store.ordenes.reduce((sum, o) => sum + (o.completedCount || 0), 0)
 )
+
+const porcentajeAvance = computed(() => {
+  const total = cortesPendientes.value + cortesRealizados.value;
+  if (total === 0) return 0;
+  return (cortesRealizados.value / total) * 100;
+})
 
 const progress = (of) => (of.cantidad || 0) > 0 ? ((of.completedCount || 0) / of.cantidad) * 100 : 0
 
@@ -152,3 +225,13 @@ function formatDuration(ms) {
   return m === 0 ? `${s}s` : `${m}m ${s % 60}s`
 }
 </script>
+
+<style scoped>
+.cyber-dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 30px;
+  justify-content: space-around;
+}
+</style>

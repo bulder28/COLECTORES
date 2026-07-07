@@ -1,53 +1,42 @@
-# Colectores App — Gestión de Corte de Tubo
+# COLECTORES — Plataforma de Gestión de Cortes
 
-App web completa para gestión y optimización de corte de tubo (colectores y manguitos).
-Fusiona lo mejor de los dos prototipos HTML:
+Aplicación web para la gestión y optimización de cortes de tubos de colectores HVAC.
 
-- **De colector_project.html**: importación con mapeo de columnas, prioridades, stats,
-  seguimiento de cortes completados, tiempos medios.
-- **De COLONEW1.2**: celdas homogéneas de trabajo (Estrategia 3), agrupación por bloques
-  (material + medida de tubo), mapa de aprovechamiento de barra (nesting 1D).
+## Stack
 
-## Arquitectura
+- **Vue 3** + Composition API
+- **Vite** — bundler y dev server
+- **Pinia** — estado global reactivo
+- **Vue Router** — navegación SPA
+- **Firebase Firestore** — base de datos en tiempo real
+- **SheetJS (xlsx)** — importación de archivos Excel
 
-```
-colectores-app/
-├── backend/                  # API REST (FastAPI + SQLAlchemy + SQLite/PostgreSQL)
-│   └── app/
-│       ├── main.py           # Punto de entrada, registro de routers
-│       ├── core/             # Configuración y conexión a BD
-│       ├── models/           # Tablas: OT, Registro, PlanNesting, Barra
-│       ├── api/              # Endpoints: /ots /import /nesting /stats
-│       └── services/         # Lógica de negocio: importador Excel/CSV, nesting 1D
-├── frontend/                 # SPA (React + Vite)
-│   └── src/
-│       ├── pages/            # Dashboard, Importar, Órdenes, Nesting
-│       ├── components/       # Tarjetas de celda, tabla de registros, mapa de barra
-│       └── services/api.js   # Cliente HTTP hacia el backend
-└── docs/                     # Decisiones de diseño y roadmap
+## Desarrollo local
+
+Requisito: Node.js v22 portable en `~/tools/node-v22.16.0-win-x64`
+
+```powershell
+$nodePath = "$env:USERPROFILE\tools\node-v22.16.0-win-x64"
+$env:PATH = "$nodePath;$env:PATH"
+cd colector-vue
+& "$nodePath\npm.cmd" run dev
 ```
 
-## Flujo principal
+Abre: **http://localhost:5173**
 
-1. **Importar** reporte de OT (.xlsx/.csv) → mapeo de columnas → registros en BD.
-2. **Agrupar** en celdas homogéneas por material + medida de tubo.
-3. **Optimizar**: nesting 1D (First Fit Decreasing) contra la barra de stock configurada.
-4. **Ejecutar**: marcar cortes completados, ver progreso y tiempos medios.
+## Funcionalidades
 
-## Arrancar en desarrollo
+- 📊 **Dashboard** — estadísticas en tiempo real
+- 📥 **Importar** — Excel con detección automática de columnas (L_COLECTOR, L_MANGUITO, NOrden)
+- 📋 **Órdenes** — filtros reactivos, timer por corte en tiempo real
+- ➕ **Nueva OF** — añadir manualmente con todos los campos
+- ✂️ **Optimización** — algoritmo First Fit Decreasing para minimizar desperdicio
+- 📦 **Stock** — inventario de tubos
+- ⚙️ **Configuración** — parámetros y estado Firebase
 
-```bash
-# Backend
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload        # http://localhost:8000/docs
+## Deploy
 
-# Frontend
-cd frontend
-npm install
-npm run dev                          # http://localhost:5173
-```
-
-## Esquema de datos de origen (Excel)
-
-`OT | MEDIDA_TUBO | MATERIAL | L_COLECTOR | L_MANGUITO`
+Netlify — build automático desde `main` usando `netlify.toml`:
+- Base: `colector-vue/`
+- Comando: `npm run build`
+- Publicar: `colector-vue/dist`

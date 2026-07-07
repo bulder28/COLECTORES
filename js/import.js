@@ -142,11 +142,13 @@ const Import = {
         if (hasHeader) {
             firstRow.forEach((h, i) => {
                 if (!h) return;
-                if (/^(of|numero|número|id)$/i.test(h)) headerMap.numero = i;
-                else if (/tipo|type/i.test(h) && headerMap.tipo === undefined) headerMap.tipo = i;
-                else if (/medida|size|tamaño|tama/i.test(h) && headerMap.medida === undefined) headerMap.medida = i;
+                if (/^(of|numero|número|id|norden)$/i.test(h)) headerMap.numero = i;
+                else if (/nordenpadre/i.test(h)) headerMap.nordenpadre = i;
+                else if (/descripci|tipo|type|pf/i.test(h) && headerMap.tipo === undefined) headerMap.tipo = i;
+                else if (/medida|size|tamaño|tama|medida_tubo/i.test(h) && headerMap.medida === undefined) headerMap.medida = i;
                 else if (/material|mat/i.test(h) && headerMap.material === undefined) headerMap.material = i;
-                else if (/longitud|length|largo|mm|len/i.test(h) && headerMap.longitud === undefined) headerMap.longitud = i;
+                else if (/longitud|length|largo|mm|len|l_colector/i.test(h) && headerMap.longitud === undefined) headerMap.longitud = i;
+                else if (/manguito/i.test(h) && headerMap.longitud_manguito === undefined) headerMap.longitud_manguito = i;
                 else if (/cantidad|qty|quantity|cant/i.test(h) && headerMap.cantidad === undefined) headerMap.cantidad = i;
                 else if (/prioridad|priority|prio/i.test(h) && headerMap.prioridad === undefined) headerMap.prioridad = i;
             });
@@ -161,27 +163,42 @@ const Import = {
             const safe = (i) => String(row[i] === undefined ? '' : row[i]).trim();
             const getField = (field, fallback) => headerMap[field] !== undefined ? safe(headerMap[field]) : safe(fallback);
 
-            const numero = getField('numero', 0);
-            const tipo = getField('tipo', 1);
-            const medida = getField('medida', 2);
-            const materialRaw = getField('material', 3);
-            const longitudStr = getField('longitud', 4);
-            const cantidadStr = getField('cantidad', 5);
-            const prioridadRaw = getField('prioridad', 6);
+            let numero = getField('numero', 0);
+            let tipo = getField('tipo', 1); // Also acts as PF/Descripción
+            let medida = getField('medida', 2);
+            let materialRaw = getField('material', 3);
+            let longitudStr = getField('longitud', 4);
+            let longitudManguitoStr = getField('longitud_manguito', -1);
+            let cantidadStr = getField('cantidad', 5);
+            let prioridadRaw = getField('prioridad', 6);
+            let nordenPadre = getField('nordenpadre', -1);
+
+            // Extracción de L (Colector) y M (Manguito) desde la descripción
+            if (tipo) {
+                const matchL = tipo.match(/(?:^|-|\s)(\d+(?:[\.,]\d+)?)L(?:$|-|\s)/i);
+                if (matchL && !longitudStr) longitudStr = matchL[1];
+
+                const matchM = tipo.match(/(?:^|-|\s)(\d+(?:[\.,]\d+)?)M(?:$|-|\s)/i);
+                if (matchM && !longitudManguitoStr) longitudManguitoStr = matchM[1];
+            }
 
             const material = Optimizer.normalizarMaterial(materialRaw);
             const prioridad = Optimizer.normalizarPrioridad(prioridadRaw);
             const longitud = parseInt(longitudStr, 10);
-            const cantidad = parseInt(cantidadStr, 10);
+            const longitud_manguito = longitudManguitoStr ? parseInt(longitudManguitoStr, 10) : null;
+            let cantidad = parseInt(cantidadStr, 10);
+            
+            // Si la cantidad no viene en el Excel, asumimos 1 por defecto
+            if (isNaN(cantidad) || cantidad <= 0) cantidad = 1;
 
-            if (!numero || !medida || !material || isNaN(longitud) || isNaN(cantidad)) {
+            if (!numero || !medida || !material || isNaN(longitud)) {
                 errores.push(index + 1);
                 return;
             }
 
             nuevos.push({
-                numero, tipo: tipo || 'colector', medida, material, prioridad,
-                longitud, cantidad, completedCount: 0, tiempos_corte: [],
+                numero, norden_padre: nordenPadre, tipo: tipo || 'colector', medida, material, prioridad,
+                longitud, longitud_manguito, cantidad, completedCount: 0, tiempos_corte: [],
                 corte_inicio: null, estado: 'pendiente'
             });
         });

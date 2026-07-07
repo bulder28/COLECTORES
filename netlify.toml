@@ -1,0 +1,25 @@
+[build]
+  # Construir desde la carpeta de la app Vue
+  base = "colector-vue"
+  command = "npm run build"
+  # El directorio publicado es dist/ dentro de colector-vue
+  publish = "colector-vue/dist"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+
+# SPA routing: redirigir todas las rutas a index.html (Vue Router con hash history ya lo maneja, pero por si acaso)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# No cachear index.html para que siempre reciba la versión más reciente
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

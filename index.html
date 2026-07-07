@@ -145,7 +145,7 @@
                         <thead>
                             <tr>
                                 <th>OF</th><th>Tipo</th><th>Medida</th><th>Material</th>
-                                <th>Longitud</th><th>Cantidad</th><th>Progreso</th><th>Prioridad</th>
+                                <th>L.Colector</th><th>L.Manguito</th><th>Cantidad</th><th>Progreso</th><th>Prioridad</th>
                             </tr>
                         </thead>
                         <tbody id="dashboardTableBody">
@@ -176,6 +176,7 @@
                             <strong>Arrastra un archivo</strong> o haz clic para seleccionar<br>
                             <span class="text-xs text-muted">Formatos: .xlsx, .xls, .csv</span>
                         </div>
+                        <div id="importFileNameDisplay" style="display:none; margin-top:10px; padding:6px 12px; background:var(--surface-2,rgba(255,255,255,0.08)); border-radius:6px; font-size:0.85rem; color:var(--accent,#38bdf8); font-weight:600;"></div>
                     </div>
                     <div class="mt-4">
                         <button class="btn btn-primary" onclick="Import.importarDesdeArchivo()">Importar Archivo</button>
@@ -280,15 +281,17 @@
                         <thead>
                             <tr>
                                 <th>OF</th>
-                                <th>Tipo</th>
+                                <th>N.Padre</th>
+                                <th>Descripción</th>
                                 <th>Medida</th>
                                 <th>Material</th>
-                                <th>Long. (mm)</th>
-                                <th>Cantidad</th>
+                                <th>L.Colector</th>
+                                <th>L.Manguito</th>
+                                <th>Cant.</th>
                                 <th>Completados</th>
                                 <th>Prioridad</th>
                                 <th>Equipo</th>
-                                <th>Tiempo</th>
+                                <th>⏱ Timer</th>
                                 <th>Acción</th>
                             </tr>
                         </thead>

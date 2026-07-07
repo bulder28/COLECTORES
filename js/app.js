@@ -7,6 +7,33 @@ let ordenesTrabajo = [];
 let stockData = [];
 let appConfig = {};
 let currentSection = 'dashboard';
+let _timerInterval = null;
+
+// ==========================================
+// REAL-TIME TIMER TICK
+// ==========================================
+function startTimerTick() {
+    if (_timerInterval) return;
+    _timerInterval = setInterval(() => {
+        // Update only the timer cells without re-rendering the whole table
+        document.querySelectorAll('[data-timer-id]').forEach(el => {
+            const id = el.dataset.timerId;
+            const of = ordenesTrabajo.find(o => o.id === id);
+            if (of && of.corte_inicio) {
+                const elapsed = Date.now() - of.corte_inicio;
+                el.textContent = App.formatDuration(elapsed);
+                el.style.color = 'var(--amber, #f59e0b)';
+            }
+        });
+    }, 1000);
+}
+
+function stopTimerTick() {
+    if (_timerInterval) {
+        clearInterval(_timerInterval);
+        _timerInterval = null;
+    }
+}
 
 // ==========================================
 // TOAST NOTIFICATIONS
@@ -115,11 +142,15 @@ const App = {
         el('statMetrosCobre', metrosCu.toFixed(1) + ' m');
         el('statMetrosHierro', metrosFe.toFixed(1) + ' m');
 
-        // Update nav badge
+        // Update nav badge — show pending cuts
         const badge = document.getElementById('ordenesNavBadge');
         if (badge) {
-            badge.textContent = totalOF;
+            const pendientes = ordenesTrabajo.filter(of =>
+                (of.completedCount || 0) < (of.cantidad || 0)
+            ).length;
+            badge.textContent = pendientes > 0 ? pendientes : totalOF;
             badge.style.display = totalOF > 0 ? 'inline' : 'none';
+            badge.title = pendientes > 0 ? `${pendientes} órdenes pendientes` : `${totalOF} órdenes`;
         }
 
         // Render dashboard preview table (last 6 orders)
@@ -127,18 +158,21 @@ const App = {
         if (dashTbody) {
             const recent = ordenesTrabajo.slice(0, 6);
             if (recent.length === 0) {
-                dashTbody.innerHTML = '<tr><td colspan="8"><div class="table-empty"><div class="table-empty-icon"></div><div class="table-empty-text">Sin órdenes de trabajo</div></div></td></tr>';
+                dashTbody.innerHTML = '<tr><td colspan="9"><div class="table-empty"><div class="table-empty-icon"></div><div class="table-empty-text">Sin órdenes de trabajo</div></div></td></tr>';
             } else {
                 dashTbody.innerHTML = recent.map(of => {
                     const completados = of.completedCount || 0;
                     const progress = (of.cantidad || 0) > 0 ? ((completados / of.cantidad) * 100) : 0;
+                    const tipoCorto = this.formatTipo(of.tipo);
                     return `
                         <tr>
                             <td><strong>${of.numero || ''}</strong></td>
-                            <td>${of.tipo || ''}</td>
+                            <td><small class="text-muted">${of.norden_padre || '—'}</small></td>
+                            <td title="${of.tipo || ''}">${tipoCorto}</td>
                             <td>${of.medida || ''}"</td>
                             <td><span class="badge ${Optimizer.materialBadgeClass(of.material)}">${of.material || ''}</span></td>
                             <td>${of.longitud || 0}</td>
+                            <td>${of.longitud_manguito ? of.longitud_manguito : '—'}</td>
                             <td>${of.cantidad || 0}</td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:6px;">
@@ -148,7 +182,6 @@ const App = {
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="badge ${Optimizer.priorityBadgeClass(of.prioridad)}">${of.prioridad || 'Normal'}</span></td>
                         </tr>
                     `;
                 }).join('');
@@ -216,14 +249,23 @@ const App = {
 
             const equipoInfo = this.getEquipoInfo(of.numero);
             const avgTime = this.getAverageDuration(of);
+            const tipoCorto = this.formatTipo(of.tipo);
+
+            // Timer display
+            const timerRunning = !!of.corte_inicio;
+            const timerDisplay = timerRunning
+                ? this.formatDuration(Date.now() - of.corte_inicio)
+                : (avgTime > 0 ? `\u00f8 ${this.formatDuration(avgTime)}` : '—');
 
             return `
                 <tr class="${completedClass}">
                     <td><strong>${of.numero || ''}</strong></td>
-                    <td>${of.tipo || ''}</td>
+                    <td><small class="text-muted">${of.norden_padre || '—'}</small></td>
+                    <td title="${of.tipo || ''}" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tipoCorto}</td>
                     <td>${of.medida || ''}"</td>
                     <td><span class="badge ${Optimizer.materialBadgeClass(of.material)}">${of.material || ''}</span></td>
                     <td>${of.longitud || 0}</td>
+                    <td>${of.longitud_manguito ? of.longitud_manguito : '—'}</td>
                     <td>${of.cantidad || 0}</td>
                     <td>
                         <div class="completion-cell">
@@ -239,11 +281,13 @@ const App = {
                     </td>
                     <td><span class="badge ${Optimizer.priorityBadgeClass(of.prioridad)}">${of.prioridad || 'Normal'}</span></td>
                     <td><span class="badge ${equipoInfo.completo ? 'badge-completado' : 'badge-pendiente'}">${equipoInfo.completo ? 'COMPLETO' : equipoInfo.completadas + '/' + equipoInfo.totalPiezas}</span></td>
-                    <td class="text-sm text-muted">${this.formatDuration(avgTime)}</td>
+                    <td>
+                        <span data-timer-id="${of.id}" style="font-variant-numeric:tabular-nums;font-size:0.85rem;${timerRunning ? 'color:var(--amber,#f59e0b);font-weight:700;' : 'color:var(--text-muted,#888);'}">${timerDisplay}</span>
+                    </td>
                     <td>
                         <div class="action-row gap-2">
-                            <button class="btn btn-ghost btn-icon btn-xs" onclick="App.toggleCorte('${of.id}')" title="${of.corte_inicio ? 'Pausar timer' : 'Iniciar timer'}">
-                                ${of.corte_inicio ? '<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='6' y='4' width='4' height='16'/><rect x='14' y='4' width='4' height='16'/></svg>' : '<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='5 3 19 12 5 21 5 3'/></svg>'}
+                            <button class="btn btn-ghost btn-icon btn-xs" onclick="App.toggleCorte('${of.id}')" title="${of.corte_inicio ? 'Pausar timer' : 'Iniciar timer'}" style="${timerRunning ? 'color:var(--amber,#f59e0b);' : ''}">
+                                ${of.corte_inicio ? '<svg width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><rect x=\'6\' y=\'4\' width=\'4\' height=\'16\'/><rect x=\'14\' y=\'4\' width=\'4\' height=\'16\'/></svg>' : '<svg width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'5 3 19 12 5 21 5 3\'/></svg>'}
                             </button>
                             <button class="btn btn-ghost btn-icon btn-xs" onclick="App.eliminarOrden('${of.id}')" title="Eliminar" style="color:var(--red);">
                                 <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 6 5 6 21 6'/><path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/></svg>
@@ -567,6 +611,19 @@ const App = {
         return Math.round(total / of.tiempos_corte.length);
     },
 
+    formatTipo(tipo) {
+        if (!tipo) return '—';
+        const t = tipo.toLowerCase();
+        // If the field looks like a short type label, show it directly
+        if (t === 'colector' || t === 'manguito') return tipo;
+        // If it's a long description code (like CD-38-25-...), detect and label
+        if (/^cd-|colector/i.test(tipo)) return 'Colector';
+        if (/^s-|manguito|solda/i.test(tipo)) return 'Manguito';
+        if (/^semi/i.test(tipo)) return 'Semielaborado';
+        // Generic truncation for other descriptions
+        return tipo.length > 20 ? tipo.substring(0, 18) + '…' : tipo;
+    },
+
     formatDuration(ms) {
         if (!ms || ms === 0) return '—';
         const seconds = Math.round(ms / 1000);
@@ -600,6 +657,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         App.renderDashboard();
         App.renderOrdenes();
         console.log(` Orders updated: ${ordenes.length} total`);
+
+        // Start timer tick if any order has an active timer
+        const anyRunning = ordenes.some(o => o.corte_inicio);
+        if (anyRunning) {
+            startTimerTick();
+        } else {
+            stopTimerTick();
+        }
 
         // Update connection status
         const dot = document.getElementById('statusDot');

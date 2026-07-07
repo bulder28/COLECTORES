@@ -3,7 +3,7 @@
   base = "colector-vue"
   command = "npm run build"
   # El directorio publicado es dist/ dentro de colector-vue
-  publish = "colector-vue/dist"
+  publish = "dist"
 
 [[headers]]
   for = "/*"

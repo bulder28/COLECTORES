@@ -1,0 +1,74 @@
+rules_version = '2';
+// Reglas de seguridad Firestore — Proyecto: colectores-7284c
+// Actualizadas: 2026-07-20 | Modo: PRODUCCIÓN (sin autenticación requerida por diseño interno)
+//
+// NOTA: Esta app es de uso interno. Las reglas permiten acceso sin autenticación
+// pero con validación estricta de estructura de datos.
+// Si en el futuro se añade Firebase Auth, cambiar `true` por `request.auth != null`.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── BLOQUEO TOTAL POR DEFECTO ─────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─── COLECCIÓN: ordenes_trabajo ────────────────────────────────────────
+    match /ordenes_trabajo/{docId} {
+
+      // Lectura: permitida (app interna)
+      allow read: if true;
+
+      // Crear: requiere campos obligatorios y tipos correctos
+      allow create: if
+        request.resource.data.keys().hasAll(['numero', 'medida', 'material', 'longitud', 'cantidad']) &&
+        request.resource.data.numero is string &&
+        request.resource.data.numero.size() > 0 &&
+        request.resource.data.medida is string &&
+        request.resource.data.medida.size() > 0 &&
+        request.resource.data.material in ['Cobre', 'Hierro'] &&
+        request.resource.data.longitud is int &&
+        request.resource.data.longitud > 0 &&
+        request.resource.data.cantidad is int &&
+        request.resource.data.cantidad > 0 &&
+        // El cliente no puede falsificar completedCount al crear
+        request.resource.data.completedCount == 0;
+
+      // Actualizar: solo permite campos de progreso, no datos de fabricación
+      allow update: if
+        // No puede cambiar datos de fabricación originales
+        request.resource.data.numero == resource.data.numero &&
+        request.resource.data.medida == resource.data.medida &&
+        request.resource.data.material == resource.data.material &&
+        request.resource.data.longitud == resource.data.longitud &&
+        // completedCount nunca puede ser negativo ni mayor que cantidad
+        (!('completedCount' in request.resource.data) ||
+          (request.resource.data.completedCount is int &&
+           request.resource.data.completedCount >= 0 &&
+           request.resource.data.completedCount <= resource.data.cantidad));
+
+      // Eliminar: permitido (operación interna)
+      allow delete: if true;
+    }
+
+    // ─── COLECCIÓN: stock ──────────────────────────────────────────────────
+    match /stock/{docId} {
+
+      // Lectura: permitida
+      allow read: if true;
+
+      // Escribir: cantidad debe ser entero no negativo
+      allow create, update: if
+        request.resource.data.keys().hasAll(['medida', 'material', 'cantidad']) &&
+        request.resource.data.cantidad is int &&
+        request.resource.data.cantidad >= 0 &&
+        request.resource.data.material in ['Cobre', 'Hierro'] &&
+        request.resource.data.medida is string &&
+        request.resource.data.medida.size() > 0;
+
+      // Eliminar: permitido
+      allow delete: if true;
+    }
+  }
+}

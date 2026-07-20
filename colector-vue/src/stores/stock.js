@@ -23,6 +23,8 @@ export const useStockStore = defineStore('stock', {
       this._unsubscribe = onSnapshot(collection(db, 'stock'), (snap) => {
         this.items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         this.loading = false
+      }, (err) => {
+        console.error('[Firestore] Error en onSnapshot (stock):', err.code, err.message)
       })
     },
 

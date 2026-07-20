@@ -58,7 +58,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Reglas de seguridad</label>
-        <p class="text-sm text-muted">Modo desarrollo — Caduca: 5 Agosto 2026</p>
+        <p class="text-sm" style="color:var(--green,#4ade80);">✅ Modo producción — Reglas con validación de datos activas</p>
       </div>
     </div>
   </div>

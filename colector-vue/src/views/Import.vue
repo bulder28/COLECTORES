@@ -221,9 +221,13 @@ async function importarTexto() {
     })
   })
   if (!nuevos.length) { resultado.value = { type: 'error', msg: 'No se encontraron registros válidos' }; return }
-  await store.importar(nuevos)
-  resultado.value = { type: 'success', msg: `${nuevos.length} órdenes importadas` }
-  textoPegado.value = ''
+  try {
+    await store.importar(nuevos)
+    resultado.value = { type: 'success', msg: `${nuevos.length} órdenes importadas` }
+    textoPegado.value = ''
+  } catch (e) {
+    resultado.value = { type: 'error', msg: `Error al importar: ${e.message}` }
+  }
 }
 
 async function cargarEjemplo() {

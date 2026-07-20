@@ -5,6 +5,24 @@ import {
   doc, serverTimestamp, writeBatch, getDocs, query, orderBy, arrayUnion
 } from 'firebase/firestore'
 
+// Campos permitidos en actualizaciones — previene escritura de campos no autorizados
+const ALLOWED_UPDATE_FIELDS = new Set([
+  'completedCount', 'estado', 'corte_inicio', 'tiempos_corte',
+  'prioridad', 'actualizado_en'
+])
+
+function sanitizarActualizacion(datos) {
+  const sanitized = {}
+  for (const [key, value] of Object.entries(datos)) {
+    if (ALLOWED_UPDATE_FIELDS.has(key)) {
+      sanitized[key] = value
+    } else {
+      console.warn(`[ordenes] Campo no permitido ignorado en actualizar(): '${key}'`)
+    }
+  }
+  return sanitized
+}
+
 export const useOrdenesStore = defineStore('ordenes', {
   state: () => ({
     ordenes: [],
@@ -50,8 +68,9 @@ export const useOrdenesStore = defineStore('ordenes', {
         this.ordenes = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         this.loading = false
         this.connected = true
-      }, () => {
+      }, (err) => {
         this.connected = false
+        console.error('[Firestore] Error en onSnapshot (ordenes_trabajo):', err.code, err.message)
       })
     },
 
@@ -66,8 +85,10 @@ export const useOrdenesStore = defineStore('ordenes', {
     },
 
     async actualizar(id, datos) {
-      datos.actualizado_en = serverTimestamp()
-      return updateDoc(doc(db, 'ordenes_trabajo', id), datos)
+      // Sanitizar: solo permite campos de la lista blanca ALLOWED_UPDATE_FIELDS
+      const datosSeguros = sanitizarActualizacion(datos)
+      datosSeguros.actualizado_en = serverTimestamp()
+      return updateDoc(doc(db, 'ordenes_trabajo', id), datosSeguros)
     },
 
     async eliminar(id) {
@@ -90,6 +111,11 @@ export const useOrdenesStore = defineStore('ordenes', {
     },
 
     async eliminarTodas() {
+      const confirmacion = window.prompt('Peligro: Se van a borrar TODAS las órdenes de trabajo.\nEscribe "BORRAR" para confirmar:');
+      if (confirmacion !== 'BORRAR') {
+        return Promise.reject(new Error('Borrado masivo cancelado.'));
+      }
+      
       const snap = await getDocs(collection(db, 'ordenes_trabajo'))
       if (snap.empty) return 0
       const BATCH = 450

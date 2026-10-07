@@ -16,10 +16,16 @@
       <div class="search-wrapper">
         <input type="text" class="form-input search-input" v-model="search" placeholder="Buscar OF, tipo, medida...">
       </div>
+      <select class="form-select" v-model="filterCategoria">
+        <option value="">Todo Tipo</option>
+        <option value="tubo">Tubos</option>
+        <option value="perfil">Perfiles</option>
+      </select>
       <select class="form-select" v-model="filterMaterial">
         <option value="">Todo Material</option>
         <option value="Cobre">Cobre</option>
         <option value="Hierro">Hierro</option>
+        <option value="Aluminio">Aluminio</option>
       </select>
       <select class="form-select" v-model="filterPrioridad">
         <option value="">Toda Prioridad</option>
@@ -44,7 +50,7 @@
               <th>Descripción</th>
               <th>Medida</th>
               <th>Material</th>
-              <th>L.Colector</th>
+              <th>L.Corte (mm)</th>
               <th>L.Manguito</th>
               <th>Cant.</th>
               <th>Completados</th>
@@ -89,6 +95,7 @@ import OrdenRow from '../components/OrdenRow.vue'
 
 const store = useOrdenesStore()
 const search = ref('')
+const filterCategoria = ref('')
 const filterMaterial = ref('')
 const filterPrioridad = ref('')
 const filterEstado = ref('')
@@ -102,6 +109,11 @@ const filtradas = computed(() => {
     (o.medida || '').toLowerCase().includes(s) ||
     (o.norden_padre || '').toLowerCase().includes(s)
   )
+  if (filterCategoria.value === 'perfil') {
+    list = list.filter(o => o.categoria === 'perfil' || (o.tipo || '').toLowerCase().includes('perfil') || String(o.medida || '').includes('x'))
+  } else if (filterCategoria.value === 'tubo') {
+    list = list.filter(o => !(o.categoria === 'perfil' || (o.tipo || '').toLowerCase().includes('perfil') || String(o.medida || '').includes('x')))
+  }
   if (filterMaterial.value) list = list.filter(o =>
     (o.material || '').toLowerCase().includes(filterMaterial.value.toLowerCase())
   )

@@ -24,10 +24,10 @@
         :style="{ animationDelay: `${idx * 0.1}s` }"
       >
         <div class="flap-cell w-num">{{ idx + 1 }}</div>
-        <div class="flap-cell w-mat" :class="tubo.material === 'Cobre' ? 'text-copper' : 'text-iron'">
-          {{ tubo.material.padEnd(8, ' ') }}
+        <div class="flap-cell w-mat" :class="tubo.material === 'Cobre' ? 'text-copper' : tubo.material === 'Aluminio' ? 'text-aluminum' : 'text-iron'">
+          {{ (tubo.material || '').padEnd(8, ' ') }}
         </div>
-        <div class="flap-cell w-med">{{ tubo.tubSize.padEnd(6, ' ') }}"</div>
+        <div class="flap-cell w-med">{{ (tubo.tubSize || '').includes('"') || (tubo.tubSize || '').includes('x') ? (tubo.tubSize || '').padEnd(6, ' ') : ((tubo.tubSize || '') + '"').padEnd(7, ' ') }}</div>
         <div class="flap-cell w-padre text-accent" title="Batería principal de este tubo">{{ tubo.cuts[0]?.norden_padre || 'Sin Batería' }}</div>
         <div class="flap-cell w-len">{{ tubo.originalLength }}MM</div>
         <div class="flap-cell w-cuts">{{ tubo.cuts.length }} CORTES</div>
@@ -44,7 +44,7 @@
     <!-- Acciones del Operario -->
     <div class="board-footer">
       <div class="batch-info">
-        MOSTRANDO TUBOS {{ startIndex + 1 }} - {{ Math.min(startIndex + batchSize, allTubos.length) }} DE {{ allTubos.length }}
+        MOSTRANDO BARRAS {{ startIndex + 1 }} - {{ Math.min(startIndex + batchSize, allTubos.length) }} DE {{ allTubos.length }}
       </div>
       <button 
         class="btn-complete-batch" 
@@ -310,6 +310,7 @@ async function completarLote() {
 /* Colores específicos */
 .text-copper { color: #ff8f4a; }
 .text-iron { color: #9ba6b5; }
+.text-aluminum { color: #a3e635; }
 .text-green { color: #00ffaa; text-shadow: 0 0 10px rgba(0, 255, 170, 0.4); }
 .text-red { color: #ff3333; }
 

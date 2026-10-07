@@ -36,14 +36,6 @@
       />
     </div>
 
-    <!-- Demostración de Tubos 3D -->
-    <div class="card" style="margin-bottom: 30px;">
-      <div class="card-header"><h3 class="card-title">Previsualización de Cortes Físicos</h3></div>
-      <div style="padding: 20px;">
-        <BarVisualizer :bar="mockCobre" />
-        <BarVisualizer :bar="mockHierro" />
-      </div>
-    </div>
 
     <!-- Stats -->
     <div class="stats-grid">
@@ -87,6 +79,11 @@
         <div class="stat-value">{{ store.metrosPendientes.hierro }} m</div>
         <div class="stat-label">Metros Hierro Pend.</div>
       </div>
+      <div class="stat-card green">
+        <div class="stat-icon">⚪</div>
+        <div class="stat-value">{{ store.metrosPendientes.aluminio || 0 }} m</div>
+        <div class="stat-label">Metros Alum. Pend.</div>
+      </div>
     </div>
 
     <!-- Recent orders -->
@@ -116,7 +113,7 @@
               <td><strong>{{ of.numero }}</strong></td>
               <td><small class="text-muted">{{ of.norden_padre || '—' }}</small></td>
               <td :title="of.tipo" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ formatTipo(of.tipo) }}</td>
-              <td>{{ of.medida }}"</td>
+              <td>{{ (of.medida || '').includes('"') || (of.medida || '').includes('x') ? of.medida : (of.medida ? of.medida + '"' : '—') }}</td>
               <td><span class="badge" :class="materialClass(of.material)">{{ of.material }}</span></td>
               <td>{{ of.longitud || 0 }}</td>
               <td>{{ of.longitud_manguito || '—' }}</td>
@@ -145,36 +142,6 @@ import Gauge from '../components/Gauge.vue'
 import BarVisualizer from '../components/BarVisualizer.vue'
 
 const store = useOrdenesStore()
-
-// Mock data para ver el tubo 3D
-const mockCobre = {
-  id: "BAR-001",
-  isNew: true,
-  material: "Cobre",
-  tubSize: "1 5/8",
-  originalLength: 6000,
-  remaining: 1800,
-  cuts: [
-    { length: 1500, orderId: "OF-1001" },
-    { length: 1500, orderId: "OF-1002" },
-    { length: 1200, orderId: "OF-1003" }
-  ],
-  newScrapGenerated: true
-};
-
-const mockHierro = {
-  id: "USED-SCRAP-002",
-  isNew: false,
-  material: "Hierro",
-  tubSize: "2",
-  originalLength: 3000,
-  remaining: 400,
-  cuts: [
-    { length: 1600, orderId: "OF-1020" },
-    { length: 1000, orderId: "OF-1021" }
-  ],
-  newScrapGenerated: false
-};
 
 
 const recentOrdenes = computed(() => store.ordenes.slice(0, 8))
@@ -205,15 +172,17 @@ const progress = (of) => (of.cantidad || 0) > 0 ? ((of.completedCount || 0) / of
 
 function materialClass(m) {
   const k = (m || '').toLowerCase()
-  return k.includes('cobre') || k === 'cu' ? 'badge-cobre' : 'badge-hierro'
+  return k.includes('cobre') || k === 'cu' ? 'badge-cobre' : k.includes('aluminio') || k === 'al' ? 'badge-aluminio' : 'badge-hierro'
 }
 
 function formatTipo(tipo) {
   if (!tipo) return '—'
   const t = tipo.toLowerCase()
-  if (t === 'colector' || t === 'manguito') return tipo
+  if (t === 'colector' || t === 'manguito' || t === 'perfil' || t === 'tubo') return tipo
   if (/^cd-|colector/i.test(tipo)) return 'Colector'
   if (/^s-|manguito|solda/i.test(tipo)) return 'Manguito'
+  if (/^perf/i.test(tipo)) return 'Perfil'
+  if (/^tub/i.test(tipo)) return 'Tubo'
   if (/^semi/i.test(tipo)) return 'Semielaborado'
   return tipo.length > 20 ? tipo.substring(0, 18) + '…' : tipo
 }

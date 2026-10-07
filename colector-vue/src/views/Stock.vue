@@ -23,9 +23,9 @@
           <div class="tubes-container">
             <div v-for="item in shelfGroup" :key="item.id" 
                  class="sw-tube" 
-                 :class="item.material === 'Cobre' ? 'sw-copper' : 'sw-iron'"
+                 :class="item.material === 'Cobre' ? 'sw-copper' : item.material === 'Aluminio' ? 'sw-aluminum' : 'sw-iron'"
                  :style="{ width: Math.max(10, (item.longitud / 6000 * 100)) + '%' }"
-                 :title="`${item.material} ${item.medida}\&#34; - ${item.longitud}mm`">
+                 :title="`${item.material} ${item.medida} - ${item.longitud}mm`">
                  
               <div class="sw-specular"></div>
               <span class="sw-label">{{ item.longitud }}mm</span>
@@ -55,6 +55,8 @@ async function cargarRetalesDemo() {
     { medida: '1/2', material: 'Cobre', longitud: 4100 },
     { medida: '5/8', material: 'Hierro', longitud: 600 },
     { medida: '3/8', material: 'Cobre', longitud: 2100 },
+    { medida: '40x40', material: 'Aluminio', longitud: 1850 },
+    { medida: '1/2', material: 'Aluminio', longitud: 3100 },
   ];
   for (const r of demos) {
     await stock.agregarRetal(r.medida, r.material, r.longitud);
@@ -150,6 +152,18 @@ const groupedRetales = computed(() => {
     #9aa5b1 60%, 
     #58606a 85%, 
     #1f2226 100%
+  );
+}
+
+.sw-aluminum {
+  background: linear-gradient(180deg, 
+    #334155 0%, 
+    #64748b 15%, 
+    #cbd5e1 30%, 
+    #ffffff 45%, 
+    #cbd5e1 60%, 
+    #64748b 85%, 
+    #334155 100%
   );
 }
 

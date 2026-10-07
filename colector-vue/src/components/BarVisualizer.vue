@@ -2,22 +2,22 @@
   <div class="bar-visualizer">
     <div class="bar-header">
       <span class="bar-title">
-        {{ bar.isNew ? 'Barra Nueva' : 'Retal Reutilizado' }} 
+        {{ isPerfil ? 'Perfil' : 'Barra' }} {{ bar.isNew ? 'Nueva' : 'Reutilizada' }} 
         <span class="bar-id">#{{ bar.id }}</span>
       </span>
       <span class="bar-info">
-        {{ bar.material }} - {{ bar.tubSize }}" ({{ bar.originalLength }}mm)
+        {{ bar.material }} - {{ formattedMedida }} ({{ bar.originalLength }}mm)
       </span>
     </div>
 
-    <!-- Tubo 3D estilo SolidWorks -->
-    <div class="sw-scene">
-      <!-- Sombra proyectada debajo del tubo -->
+    <!-- Tubo o Perfil 3D estilo SolidWorks -->
+    <div class="sw-scene" :class="{ 'scene-profile': isPerfil }">
+      <!-- Sombra proyectada debajo de la barra -->
       <div class="tube-shadow"></div>
 
-      <div class="sw-tube" :class="materialClass">
-        <!-- Tapa izquierda del tubo (elipse) -->
-        <div class="tube-cap cap-left" :class="materialClass + '-cap'"></div>
+      <div class="sw-tube" :class="[materialClass, { 'sw-profile-bar': isPerfil }]">
+        <!-- Tapa izquierda (solo para tubos cilíndricos) -->
+        <div v-if="!isPerfil" class="tube-cap cap-left" :class="materialClass + '-cap'"></div>
 
         <!-- Segmentos de corte -->
         <div 
@@ -38,14 +38,15 @@
           class="sw-segment sw-remaining"
           :class="{ 'sw-scrap': bar.newScrapGenerated }"
           :style="{ flex: bar.remaining }"
+          :title="bar.newScrapGenerated ? `Retal útil reutilizable: ${bar.remaining}mm` : (bar.retalMinimo <= 0 ? `Desperdicio directo: ${bar.remaining}mm` : `Merma chatarra: ${bar.remaining}mm`)"
         >
           <span class="sw-label sw-label-small">
-            {{ bar.newScrapGenerated ? '✅ RETAL' : '🗑️ DESECHO' }}<br>{{ bar.remaining }}mm
+            {{ bar.newScrapGenerated ? 'RETAL' : (bar.retalMinimo <= 0 ? 'DESPERDICIO' : 'MERMA') }}<br>{{ bar.remaining }}mm
           </span>
         </div>
 
-        <!-- Tapa derecha del tubo (elipse) -->
-        <div class="tube-cap cap-right" :class="materialClass + '-cap'"></div>
+        <!-- Tapa derecha (solo para tubos cilíndricos) -->
+        <div v-if="!isPerfil" class="tube-cap cap-right" :class="materialClass + '-cap'"></div>
       </div>
 
       <!-- Reflejo especular largo (brillo SolidWorks) -->
@@ -64,9 +65,23 @@ const props = defineProps({
   }
 });
 
+const isPerfil = computed(() => {
+  const t = (props.bar.tipo || '').toLowerCase();
+  const m = String(props.bar.tubSize || props.bar.medida || '').toLowerCase();
+  return t.includes('perfil') || m.includes('x') || props.bar.categoria === 'perfil';
+});
+
+const formattedMedida = computed(() => {
+  const m = String(props.bar.tubSize || props.bar.medida || '');
+  if (!m) return '—';
+  if (m.includes('"') || m.includes('x')) return m;
+  return m + '"';
+});
+
 const materialClass = computed(() => {
   const mat = (props.bar.material || '').toLowerCase();
   if (mat.includes('cobre') || mat === 'cu') return 'sw-cobre';
+  if (mat.includes('aluminio') || mat === 'al') return 'sw-aluminio';
   if (mat.includes('hierro') || mat === 'fe') return 'sw-hierro';
   return 'sw-default';
 });
@@ -159,6 +174,9 @@ const materialClass = computed(() => {
 }
 .sw-hierro-cap {
   background: radial-gradient(ellipse at 40% 35%, #e2e8f0 0%, #7a8694 40%, #1e2329 100%);
+}
+.sw-aluminio-cap {
+  background: radial-gradient(ellipse at 40% 35%, #ffffff 0%, #cbd5e1 40%, #64748b 100%);
 }
 .sw-default-cap {
   background: radial-gradient(ellipse at 40% 35%, #bbb 0%, #666 40%, #111 100%);
@@ -298,6 +316,28 @@ const materialClass = computed(() => {
   );
 }
 
+/* --- ALUMINIO (Plateado brillante satinado / Perfiles) --- */
+.sw-aluminio .sw-segment {
+  background: linear-gradient(
+    to bottom,
+    #334155 0%,
+    #475569 5%,
+    #64748b 12%,
+    #94a3b8 22%,
+    #cbd5e1 32%,
+    #e2e8f0 42%,
+    #ffffff 48%,
+    #f8fafc 50%,
+    #ffffff 52%,
+    #e2e8f0 58%,
+    #cbd5e1 68%,
+    #94a3b8 78%,
+    #64748b 88%,
+    #475569 95%,
+    #334155 100%
+  );
+}
+
 /* --- DEFAULT (Acero oscuro) --- */
 .sw-default .sw-segment {
   background: linear-gradient(
@@ -343,5 +383,22 @@ const materialClass = computed(() => {
     rgba(0, 110, 40, 0.5) 12px
   ) !important;
   box-shadow: inset 0 0 12px rgba(0, 255, 100, 0.2);
+}
+
+/* =========================================================
+   PERFILES ESTRUCTURALES (FORMA CUADRADA / RECTANGULAR)
+   ========================================================= */
+
+.sw-profile-bar {
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sw-profile-bar .sw-segment {
+  border-radius: 0 !important;
+}
+
+.scene-profile .tube-shadow {
+  border-radius: 2px !important;
 }
 </style>

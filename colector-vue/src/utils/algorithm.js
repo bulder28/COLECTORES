@@ -44,8 +44,17 @@ export const calculateCuts = (workOrders, currentInventory, config) => {
   };
 
   for (const key in groups) {
-    // 1. Ordenar cortes de mayor a menor (First Fit Decreasing)
-    const cuts = groups[key].sort((a, b) => b.length - a.length);
+    // 1. Ordenar cortes por Prioridad (Alta > Normal > Baja) y luego de mayor a menor (FFD)
+    const cuts = groups[key].sort((a, b) => {
+      const priorityMap = { 'Alta': 3, 'Normal': 2, 'Baja': 1 };
+      const pA = priorityMap[a.prioridad] || priorityMap[a.priority] || 2;
+      const pB = priorityMap[b.prioridad] || priorityMap[b.priority] || 2;
+      
+      if (pA !== pB) {
+        return pB - pA;
+      }
+      return b.length - a.length;
+    });
     const [material, tubSize] = key.split('|');
 
     // Barras en uso para este grupo

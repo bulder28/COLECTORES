@@ -11,22 +11,22 @@
     --stulz-red-dark: #8B1A1A;
     --stulz-red-light: #EF5350;
 
-    /* Theme Overrides for Stulz Light Theme */
-    --bg-primary: #eaedf2;
-    --bg-secondary: #D8DCE2;
-    --bg-surface: #FFF;
-    --bg-surface-hover: #F0F2F5;
-    --bg-surface-active: #E0E4E8;
-    --bg-glass: rgba(255, 255, 255, 0.85);
-    --bg-glass-strong: rgba(255, 255, 255, 0.95);
+    /* Premium Dark Mode Overrides */
+    --bg-primary: #0B0F19;
+    --bg-secondary: #111827;
+    --bg-surface: #1F2937;
+    --bg-surface-hover: #374151;
+    --bg-surface-active: #4B5563;
+    --bg-glass: rgba(17, 24, 39, 0.7);
+    --bg-glass-strong: rgba(17, 24, 39, 0.95);
 
-    --border-color: #D8DBE0;
-    --border-color-medium: #C0C4CC;
-    --border-color-strong: #A0A5B0;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-color-medium: rgba(255, 255, 255, 0.15);
+    --border-color-strong: rgba(255, 255, 255, 0.25);
 
-    --text-primary: #172433;
-    --text-secondary: #4A5568;
-    --text-muted: #888;
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --text-muted: #9CA3AF;
     --text-accent: var(--stulz-red);
 
     --accent: var(--stulz-red);
@@ -644,8 +644,8 @@ table {
 }
 
 thead th {
-    background: #172433;
-    color: #FFFFFF;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
     font-weight: 600;
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -728,6 +728,12 @@ tbody tr.completed td {
     background: rgba(56, 189, 248, 0.15);
     color: #38bdf8;
     border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.badge-aluminio {
+    background: rgba(163, 230, 53, 0.15);
+    color: #a3e635;
+    border: 1px solid rgba(163, 230, 53, 0.2);
 }
 
 .badge-alta {

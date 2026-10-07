@@ -27,3 +27,9 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 *.sln
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+colector-vue/__pycache__/

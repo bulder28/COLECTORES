@@ -39,14 +39,16 @@ export const useOrdenesStore = defineStore('ordenes', {
     tieneTimerActivo: (state) => state.ordenes.some(o => !!o.corte_inicio),
 
     metrosPendientes: (state) => {
-      let cobre = 0, hierro = 0
+      let cobre = 0, hierro = 0, aluminio = 0
       state.ordenes.forEach(o => {
         const pend = Math.max(0, (o.cantidad || 0) - (o.completedCount || 0))
         const metros = ((o.longitud || 0) * pend) / 1000
-        if ((o.material || '').toLowerCase().includes('cobre')) cobre += metros
+        const mat = (o.material || '').toLowerCase()
+        if (mat.includes('cobre') || mat === 'cu') cobre += metros
+        else if (mat.includes('aluminio') || mat === 'al') aluminio += metros
         else hierro += metros
       })
-      return { cobre: cobre.toFixed(1), hierro: hierro.toFixed(1) }
+      return { cobre: cobre.toFixed(1), hierro: hierro.toFixed(1), aluminio: aluminio.toFixed(1) }
     },
 
     tiempoMedioMs: (state) => {

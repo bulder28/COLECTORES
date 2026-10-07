@@ -5,7 +5,7 @@
     <td :title="orden.tipo" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
       {{ tipoCorto }}
     </td>
-    <td>{{ orden.medida }}"</td>
+    <td>{{ (orden.medida || '').includes('"') || (orden.medida || '').includes('x') ? orden.medida : (orden.medida ? orden.medida + '"' : '—') }}</td>
     <td><span class="badge" :class="materialClass">{{ orden.material }}</span></td>
     <td>{{ orden.longitud || 0 }}</td>
     <td>{{ orden.longitud_manguito || '—' }}</td>
@@ -118,7 +118,7 @@ const timerStyle = computed(() => ({
 
 const materialClass = computed(() => {
   const k = (props.orden.material || '').toLowerCase()
-  return k.includes('cobre') || k === 'cu' ? 'badge-cobre' : 'badge-hierro'
+  return k.includes('cobre') || k === 'cu' ? 'badge-cobre' : k.includes('aluminio') || k === 'al' ? 'badge-aluminio' : 'badge-hierro'
 })
 
 const prioridadClass = computed(() => {
@@ -132,9 +132,11 @@ const tipoCorto = computed(() => {
   const tipo = props.orden.tipo || ''
   if (!tipo) return '—'
   const t = tipo.toLowerCase()
-  if (t === 'colector' || t === 'manguito') return tipo
+  if (t === 'colector' || t === 'manguito' || t === 'perfil' || t === 'tubo') return tipo
   if (/^cd-|colector/i.test(tipo)) return 'Colector'
   if (/^s-|manguito|solda/i.test(tipo)) return 'Manguito'
+  if (/^perf/i.test(tipo)) return 'Perfil'
+  if (/^tub/i.test(tipo)) return 'Tubo'
   if (/^semi/i.test(tipo)) return 'Semielaborado'
   return tipo.length > 20 ? tipo.substring(0, 18) + '…' : tipo
 })

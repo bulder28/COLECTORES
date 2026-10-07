@@ -73,6 +73,8 @@ export const useStockStore = defineStore('stock', {
         { medida: '3/8', material: 'Hierro', cantidad: 10 },
         { medida: '5/8', material: 'Cobre', cantidad: 10 },
         { medida: '5/8', material: 'Hierro', cantidad: 10 },
+        { medida: '1/2', material: 'Aluminio', cantidad: 10 },
+        { medida: '40x40', material: 'Aluminio', cantidad: 10 },
       ]
       const batch = writeBatch(db)
       defaults.forEach(item => {
@@ -89,6 +91,7 @@ export const useStockStore = defineStore('stock', {
         { medida: '1/2', material: 'Cobre', longitud: 4100 },
         { medida: '5/8', material: 'Hierro', longitud: 600 },
         { medida: '3/8', material: 'Cobre', longitud: 2100 },
+        { medida: '40x40', material: 'Aluminio', longitud: 1850 },
       ]
       retalesDemo.forEach((r, i) => {
         const rid = `retal-demo-${i}`

@@ -27,7 +27,8 @@ service cloud.firestore {
         request.resource.data.numero.size() > 0 &&
         request.resource.data.medida is string &&
         request.resource.data.medida.size() > 0 &&
-        request.resource.data.material in ['Cobre', 'Hierro'] &&
+        request.resource.data.material is string &&
+        request.resource.data.material.size() > 0 &&
         request.resource.data.longitud is int &&
         request.resource.data.longitud > 0 &&
         request.resource.data.cantidad is int &&
@@ -63,7 +64,8 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['medida', 'material', 'cantidad']) &&
         request.resource.data.cantidad is int &&
         request.resource.data.cantidad >= 0 &&
-        request.resource.data.material in ['Cobre', 'Hierro'] &&
+        request.resource.data.material is string &&
+        request.resource.data.material.size() > 0 &&
         request.resource.data.medida is string &&
         request.resource.data.medida.size() > 0;
 

@@ -93,6 +93,7 @@ function normalizarMaterial(m) {
   const v = String(m || '').trim()
   if (/^(cu|cobre)$/i.test(v)) return 'Cobre'
   if (/^(fe|hierro)$/i.test(v)) return 'Hierro'
+  if (/^(al|aluminio|aluminum)$/i.test(v)) return 'Aluminio'
   return v || 'Cobre'
 }
 
@@ -178,6 +179,7 @@ async function importarArchivo() {
 
       nuevos.push({
         numero, norden_padre: nordenPadre, tipo: tipo || 'colector',
+        categoria: (/perfil|cuadrado|rectangular|angulo|ángulo|pletina/i.test(tipo) || String(medida).includes('x')) ? 'perfil' : 'tubo',
         medida, material, prioridad, longitud, longitud_manguito,
         cantidad, completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente'
       })
@@ -215,6 +217,7 @@ async function importarTexto() {
     if (!numero || !medida || !material || isNaN(longitud)) return
     nuevos.push({
       numero, tipo: tipo || 'colector', medida, material,
+      categoria: (/perfil|cuadrado|rectangular|angulo|ángulo|pletina/i.test(tipo) || String(medida).includes('x')) ? 'perfil' : 'tubo',
       prioridad: normalizarPrioridad(prioridadRaw), longitud,
       cantidad: isNaN(cantidad) ? 1 : cantidad,
       completedCount: 0, tiempos_corte: [], corte_inicio: null, estado: 'pendiente'
